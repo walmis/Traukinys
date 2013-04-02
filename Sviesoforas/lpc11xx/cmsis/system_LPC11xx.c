@@ -24,7 +24,7 @@
 
 
 #include <stdint.h>
-#include "LPC11xx.h"
+#include <lpc11xx/cmsis/LPC11xx.h>
 
 #define 	FLASHCFG   (*((volatile uint32_t *)0x4003C010))
 
@@ -131,8 +131,8 @@
 
 
 #define CLOCK_SETUP           1
-#define SYSCLK_SETUP          0
-#define SYSOSC_SETUP          0
+#define SYSCLK_SETUP          1
+#define SYSOSC_SETUP          1
 
 #define SYSOSCCTRL_Val        0x00000000
 
@@ -140,7 +140,7 @@
 #define WDTOSCCTRL_Val        0x000000A0
 
 #define SYSPLLCLKSEL_Val      0x00000000
-#define SYSPLL_SETUP          0
+#define SYSPLL_SETUP          1
 
 #define SYSPLLCTRL_Val        (PSEL(2) | MSEL(4))
 
@@ -478,7 +478,7 @@ void SystemInit (void)
 #endif
 
 #if __SYSTEM_CLOCK < 20000000
-  //FLASHCFG = 0;
+  FLASHCFG = 0;
 #elif __SYSTEM_CLOCK < 40000000
   FLASHCFG = 1;
 #else

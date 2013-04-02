@@ -43,12 +43,13 @@
  * Forward undefined IRQ handlers to an infinite loop function. The Handlers
  * are weakly aliased which means that (re)definitions will overide these.
  *****************************************************************************/
-#include <LPC11xx.h>
+#include <lpc11xx/cmsis/LPC11xx.h>
+
+extern void default_irq_handler();
 
 void irq_undefined() {
   // Do nothing when occured interrupt is not defined, just keep looping
-	  while(1){
-	  }
+	default_irq_handler();
 }
 
 void CAN_IRQHandler(void)       WEAK_ALIAS(irq_undefined);
@@ -78,8 +79,7 @@ void WAKEUP_IRQHandler(void)    WEAK_ALIAS(irq_undefined);
  ****************************************************************************/
 void fault_undefined() {
   // Do nothing when occured interrupt is not defined, just keep looping
-  while(1){
-  }
+	while(1);
 }
 
 void NMI_Handler(void)          WEAK_ALIAS(fault_undefined);
@@ -98,7 +98,7 @@ void SysTick_Handler(void)      WEAK_ALIAS(fault_undefined);
  *****************************************************************************/
 
 // Prototype the entry values, which are handled by the linker script
-extern void* stack_entry;
+extern void __stack_end;
 extern void boot_entry(void);
 
 // Defined irq vectors using simple c code following the description in a white 
@@ -107,7 +107,7 @@ extern void boot_entry(void);
 const void *vectors[] SECTION(".irq_vectors") =
 {
   // Stack and program reset entry point
-  &stack_entry,          // The initial stack pointer
+  &__stack_end,          // The initial stack pointer
   boot_entry,            // The reset handler
 
   // Various fault handlers

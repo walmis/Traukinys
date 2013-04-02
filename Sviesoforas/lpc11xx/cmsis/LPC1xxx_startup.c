@@ -30,23 +30,24 @@
 
 // These are defined and created by the linker, locating them in memory
 extern unsigned long _etext;
-extern unsigned long _sidata;		/* start address for the initialization values of the .data section. defined in linker script */
-extern unsigned long _sdata;		/* start address for the .data section. defined in linker script */
-extern unsigned long _edata;		/* end address for the .data section. defined in linker script */
+extern unsigned long __data_load;		/* start address for the initialization values of the .data section. defined in linker script */
+extern unsigned long __data_start;		/* start address for the .data section. defined in linker script */
+extern unsigned long __data_end;		/* end address for the .data section. defined in linker script */
 
-extern unsigned long _sifastcode;		/* start address for the initialization values of the .fastcode section. defined in linker script */
-extern unsigned long _sfastcode;		/* start address for the .fastcode section. defined in linker script */
-extern unsigned long _efastcode;		/* end address for the .fastcode section. defined in linker script */
+extern unsigned long __fastcode_load;		/* start address for the initialization values of the .fastcode section. defined in linker script */
+extern unsigned long __fastcode_start;		/* start address for the .fastcode section. defined in linker script */
+extern unsigned long __fastcode_end;		/* end address for the .fastcode section. defined in linker script */
 
-extern unsigned long _sbss;			/* start address for the .bss section. defined in linker script */
-extern unsigned long _ebss;			/* end address for the .bss section. defined in linker script */
+extern unsigned long __bss_start;			/* start address for the .bss section. defined in linker script */
+extern unsigned long __bss_end;			/* end address for the .bss section. defined in linker script */
 
-extern void _estack;		/* init value for the stack pointer. defined in linker script */
+extern void __stack_end;		/* init value for the stack pointer. defined in linker script */
 
 // Prototype the required startup functions
 extern void main(void);
 extern void SystemInit(void);
 extern void  __libc_init_array();
+extern void __xpcc_initialize_memory(void);
 // The entry point of the application, prepare segments,
 // initialize the cpu and execute main()
 
@@ -68,7 +69,7 @@ extern void (*__fini_array_end []) (void) __attribute__((weak));
 //    return 0;
 //}
 
-static void _ctors_init() {
+inline __attribute__((always_inline)) void __ctors_init() {
     register int count;
     register int i;
 
@@ -83,48 +84,47 @@ static void _ctors_init() {
 
 
 
-static void _segs_init() {
-    register unsigned long *pulDest;
-    register unsigned long *pulSrc;
+inline __attribute__((always_inline)) void __segs_init() {
 
     //
     // Copy the data segment initializers from flash to SRAM in ROM mode
     //
 
-    if (&_sidata != &_sdata) {	// only if needed
-		pulSrc = &_sidata;
-		for(pulDest = &_sdata; pulDest < &_edata; ) {
-			*(pulDest++) = *(pulSrc++);
-		}
-    }
+	register unsigned long* src = &__fastcode_load;
+	register unsigned long* dest = &__fastcode_start;
+	while (dest < &__fastcode_end)
+	{
+		*(dest++) = *(src++);
+	}
 
-    // Copy the .fastcode code from ROM to SRAM
+	// Copy the data segment initializers from flash to RAM (.data)
+	src = &__data_load;
+	dest = &__data_start;
+	while (dest < &__data_end)
+	{
+		*(dest++) = *(src++);
+	}
 
-    if (&_sifastcode != &_sfastcode) {	// only if needed
-    	pulSrc = &_sifastcode;
-		for(pulDest = &_sfastcode; pulDest < &_efastcode; ) {
-			*(pulDest++) = *(pulSrc++);
-		}
-    }
-
-    //
-    // Zero fill the bss segment.
-    //
-    for(pulDest = &_sbss; pulDest < &_ebss; )
-    {
-        *(pulDest++) = 0;
-    }
+	// Fill the bss segment with zero (.bss)
+	dest = &__bss_start;
+	while (dest < &__bss_end)
+	{
+		*(dest++) = 0;
+	}
 
 }
-void boot_entry(void) __attribute__((__interrupt__));
-
+void boot_entry(void) __attribute__((noreturn));
 
 void boot_entry(void)
 {
 	SystemInit();
 
-	_segs_init();
-    _ctors_init();
+	__segs_init();
+
+	__xpcc_initialize_memory();
+
+    __ctors_init();
+
 
 	main();
 
