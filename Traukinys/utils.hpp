@@ -26,7 +26,7 @@ public:
 		t.restart(time);
 	}
 
-	void run() {
+	void handleTick() override {
 		if(t.isExpired()) {
 			Pin::set(0);
 		}

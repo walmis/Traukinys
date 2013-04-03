@@ -45,10 +45,11 @@
  *****************************************************************************/
 #include <LPC11xx.h>
 
+extern void default_irq_handler();
+
 void irq_undefined() {
   // Do nothing when occured interrupt is not defined, just keep looping
-	while(1){
-	  }
+	default_irq_handler();
 }
 
 void CAN_IRQHandler(void)       WEAK_ALIAS(irq_undefined);
@@ -76,7 +77,10 @@ void WAKEUP_IRQHandler(void)    WEAK_ALIAS(irq_undefined);
  * Forward undefined fault handlers to an infinite loop function. The Handlers
  * are weakly aliased which means that (re)definitions will overide these.
  ****************************************************************************/
+extern __attribute((weak)) void fault_handler() {}
+
 void fault_undefined() {
+	fault_handler();
 	while(1);
 }
 
@@ -168,3 +172,4 @@ const void *vectors[] SECTION(".irq_vectors") =
  *  [3] http://www.arm.com/files/pdf/Cortex-M3_programming_for_ARM7_developers.pdf
  *  [4] http://fun-tech.se/stm32/OlimexBlinky/mini.php
  *****************************************************************************/
+
