@@ -69,7 +69,7 @@ public:
 };
 
 
-GPIO__INPUT(progPin, 0, 1);
+GPIO__IO(progPin, 0, 1);
 
 
 //motor controller definitions
