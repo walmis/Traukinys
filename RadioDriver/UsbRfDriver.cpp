@@ -11,6 +11,8 @@
 
 #include <unistd.h>
 
+#include "UsbRfProtocol.hpp"
+
 
 UsbRfDriver::UsbRfDriver() {
 	connect_th = 0;
@@ -60,7 +62,10 @@ void UsbRfDriver::connect() {
 				}
 
 				XPCC_LOG_INFO .printf("USB: Device successfully initialized\n");
+				this->device = device;
 				connected = true;
+
+				//data_th = new std::thread(&UsbRfDriver::txRx, this);
 			}
 		}
 
@@ -68,6 +73,54 @@ void UsbRfDriver::connect() {
 	}
 
 
+}
+
+RadioStatus UsbRfDriver::setChannel(uint8_t channel) {
+	return remoteCall<SET_CHANNEL, RadioStatus, uint8_t>(channel);
+}
+
+uint8_t UsbRfDriver::getChannel() {
+	return remoteCall<GET_CHANNEL, uint8_t>();
+}
+
+void UsbRfDriver::setShortAddress(uint16_t address) {
+	//funcCallPkt<SET_SHORT_ADDRESS, uint16_t> f(address);
+	remoteCall<SET_SHORT_ADDRESS, None, uint32_t>(address);
+}
+
+uint16_t UsbRfDriver::getShortAddress() {
+	return remoteCall<GET_SHORT_ADDRESS, uint16_t>();
+}
+
+
+void UsbRfDriver::setPanId(uint16_t panId) {
+	remoteCall<SET_PAN_ID, None, uint16_t>(panId);
+}
+
+uint16_t UsbRfDriver::getPanId() {
+	return remoteCall<GET_PAN_ID, uint16_t>();
+}
+
+void UsbRfDriver::setRxFrameHandler(FrameHandler func) {
+}
+
+void UsbRfDriver::rxOn() {
+	funcCallPkt<RX_ON> f;
+}
+
+void UsbRfDriver::rxOff() {
+	funcCallPkt<RX_OFF> f;
+}
+
+uint8_t UsbRfDriver::getFrameLength() {
+}
+
+void UsbRfDriver::txRx() {
+
+	while(connected) {
+
+
+	}
 }
 
 

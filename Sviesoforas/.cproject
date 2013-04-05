@@ -24,6 +24,7 @@
 								<option id="gnu.c.compiler.option.debugging.level.628506288" name="Debug Level" superClass="gnu.c.compiler.option.debugging.level" value="gnu.c.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.misc.other.542182815" name="Other flags" superClass="gnu.c.compiler.option.misc.other" value="-c -fmessage-length=0 -mthumb -ffunction-sections -fdata-sections  -mcpu=cortex-m0" valueType="string"/>
 								<option id="gnu.c.compiler.option.include.paths.151681972" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/lpc11xx}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/lpc11xx/cmsis}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/xpcc/src}&quot;"/>
@@ -42,6 +43,7 @@
 								<option id="gnu.cpp.compiler.option.debugging.level.198500155" name="Debug Level" superClass="gnu.cpp.compiler.option.debugging.level" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.other.other.359987823" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -mthumb -ffunction-sections -fdata-sections  -mcpu=cortex-m0 -fno-rtti -fno-exceptions -std=gnu++0x" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1280403109" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/lpc11xx}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/lpc11xx/cmsis}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/xpcc/src}&quot;"/>
@@ -66,8 +68,12 @@
 								<option id="gnu.cpp.link.option.nodeflibs.1378737972" name="Do not use default libraries (-nodefaultlibs)" superClass="gnu.cpp.link.option.nodeflibs" value="true" valueType="boolean"/>
 								<option id="gnu.cpp.link.option.nostdlibs.1886830719" name="No startup or default libs (-nostdlib)" superClass="gnu.cpp.link.option.nostdlibs" value="true" valueType="boolean"/>
 								<option id="gnu.cpp.link.option.libs.1971960725" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="xpcc"/>
 									<listOptionValue builtIn="false" value="gcc"/>
 									<listOptionValue builtIn="false" value="c"/>
+								</option>
+								<option id="gnu.cpp.link.option.paths.1869310982" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc/LPC11xx}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.817938332" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
@@ -77,6 +83,7 @@
 							<tool id="cdt.managedbuild.tool.gnu.cross.archiver.1415804371" name="Cross GCC Archiver" superClass="cdt.managedbuild.tool.gnu.cross.archiver"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.assembler.820368839" name="Cross GCC Assembler" superClass="cdt.managedbuild.tool.gnu.cross.assembler">
 								<option id="gnu.both.asm.option.include.paths.1687806621" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;/${ProjName}/&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1873813709" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
@@ -88,7 +95,15 @@
 					</sourceEntries>
 				</configuration>
 			</storageModule>
-			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
+			<storageModule moduleId="org.eclipse.cdt.core.externalSettings">
+				<externalSettings containerId="xpcc;cdt.managedbuild.config.gnu.cross.exe.release.735040115" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+					<externalSetting>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/xpcc"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/xpcc/LPC11xx"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="xpcc" srcPrefixMapping="" srcRootPath=""/>
+					</externalSetting>
+				</externalSettings>
+			</storageModule>
 			<storageModule moduleId="packages"/>
 		</cconfiguration>
 	</storageModule>

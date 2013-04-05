@@ -3,6 +3,7 @@
 	<name>Sviesoforas</name>
 	<comment></comment>
 	<projects>
+		<project>xpcc</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

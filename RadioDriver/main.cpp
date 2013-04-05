@@ -24,6 +24,8 @@ int main() {
 
 	xpcc::log::debug .printf("Hello\n");
 
+	driver.setPanId(20);
+
 	while(1) {
 		sleep(1);
 	}
