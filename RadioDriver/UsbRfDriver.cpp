@@ -29,44 +29,52 @@ UsbRfDriver::~UsbRfDriver() {
 		delete connect_th;
 }
 
-void UsbRfDriver::init(uint16_t vendor, uint16_t product,
-		uint8_t bulkInEp, uint8_t bulkOutEp) {
+void UsbRfDriver::init(uint16_t vendor, uint16_t product) {
 
-	outEp = bulkOutEp;
-	inEp = bulkInEp;
+	outBulk = 0x02;
+	inBulk = 0x82;
+
+	inInt = 0x81;
+	outInt = 0x01;
 
 	this->vendor = vendor;
 	this->product = product;
 
-	connect_th = new std::thread(&UsbRfDriver::connect, this);
+	connect();
+
+	connect_th = new std::thread(&UsbRfDriver::reconnect, this);
 
 }
 
 void UsbRfDriver::connect() {
+	device = libusb_open_device_with_vid_pid(usb_ctx, vendor, product);
+
+	if (device) {
+		XPCC_LOG_INFO.printf("USB: Connecting to USB device %04x:%04x\n",
+				vendor, product);
+		int ret;
+
+		ret = libusb_claim_interface(device, 0);
+		if (ret != 0) {
+			XPCC_LOG_ERROR.printf("USB: Failed to claim interface 0\n%s\n",
+					libusb_error_name(ret));
+
+			return;
+		}
+
+		XPCC_LOG_INFO.printf("USB: Device successfully initialized\n");
+
+		connected = true;
+
+		//data_th = new std::thread(&UsbRfDriver::txRx, this);
+	}
+}
+
+void UsbRfDriver::reconnect() {
 	while(1) {
+
 		if(!connected) {
-			libusb_device_handle* device  =
-					libusb_open_device_with_vid_pid (usb_ctx, vendor, product);
-
-			if(device) {
-				XPCC_LOG_INFO .printf("USB: Connected to USB device\n");
-
-				if(libusb_set_configuration(device, 0) != 0) {
-					XPCC_LOG_ERROR .printf("USB: Failed to set configuration\n");
-					continue;
-				}
-
-				if(libusb_claim_interface(device, 0) != 0) {
-					XPCC_LOG_ERROR .printf("USB: Failed to claim interface 0\n");
-					continue;
-				}
-
-				XPCC_LOG_INFO .printf("USB: Device successfully initialized\n");
-				this->device = device;
-				connected = true;
-
-				//data_th = new std::thread(&UsbRfDriver::txRx, this);
-			}
+			connect();
 		}
 
 		usleep(500000);
@@ -105,15 +113,16 @@ void UsbRfDriver::setRxFrameHandler(FrameHandler func) {
 }
 
 void UsbRfDriver::rxOn() {
-	funcCallPkt<RX_ON> f;
+	remoteCall<RX_ON, None>();
 }
 
 void UsbRfDriver::rxOff() {
-	funcCallPkt<RX_OFF> f;
+	remoteCall<RX_OFF, None>();
 }
 
 uint8_t UsbRfDriver::getFrameLength() {
 }
+
 
 void UsbRfDriver::txRx() {
 

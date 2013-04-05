@@ -20,8 +20,6 @@ TinyRadioProtocol<typeof(driver), AES_CCM_32> radio(driver);
 int main() {
 	driver.init();
 
-
-
 	xpcc::log::debug .printf("Hello\n");
 
 	driver.setPanId(20);

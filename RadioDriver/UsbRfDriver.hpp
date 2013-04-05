@@ -30,8 +30,7 @@ public:
 	UsbRfDriver();
 	virtual ~UsbRfDriver();
 
-	void init(uint16_t vendor = 0xFFFF, uint16_t product = 0xCCFF,
-			uint8_t bulkInEp = 0x85, uint8_t bulkOutEp = 0x05);
+	void init(uint16_t vendor = 0xFFFF, uint16_t product = 0x0708);
 
 	RadioStatus setChannel(uint8_t channel);
 	uint8_t getChannel();
@@ -60,6 +59,7 @@ public:
 
 private:
 	void connect();
+	void reconnect();
 	std::thread* connect_th;
 
 	void txRx();
@@ -68,8 +68,12 @@ private:
 
 	libusb_context* usb_ctx;
 
-	uint8_t outEp;
-	uint8_t inEp;
+	uint8_t outBulk;
+	uint8_t inBulk;
+
+	uint8_t outInt;
+	uint8_t inInt;
+
 	uint16_t vendor;
 	uint16_t product;
 
@@ -83,15 +87,15 @@ private:
 		funcCallPkt<id, Targ0> f(arg);
 		int transferred = 0;
 
-		int status = libusb_bulk_transfer(device, outEp, f.data(), f.size(), &transferred, 500);
+		int status = libusb_interrupt_transfer(device, outInt, f.data(), f.size(), &transferred, 500);
 		if(status != 0) {
-
+			XPCC_LOG_ERROR .printf("USB: Transfer failed \n%s\n", libusb_error_name(status));
 			return (Tret)0;
 		}
 
 		if(!std::is_same<Tret, None>::value) {
 			Tret ret;
-			libusb_bulk_transfer(device, inEp, (uint8_t*)&ret, sizeof(ret), 0, 500);
+			status = libusb_interrupt_transfer(device, inInt, (uint8_t*)&ret, sizeof(ret), 0, 500);
 			return ret;
 		}
 		return (Tret)0;
