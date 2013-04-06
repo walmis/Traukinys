@@ -29,7 +29,7 @@ UsbRfDriver::~UsbRfDriver() {
 		delete connect_th;
 }
 
-void UsbRfDriver::init(uint16_t vendor, uint16_t product) {
+void UsbRfDriver::initUSB(uint16_t vendor, uint16_t product) {
 
 	outBulk = 0x02;
 	inBulk = 0x82;
@@ -43,6 +43,13 @@ void UsbRfDriver::init(uint16_t vendor, uint16_t product) {
 	connect();
 
 	connect_th = new std::thread(&UsbRfDriver::reconnect, this);
+	data_th = new std::thread(&UsbRfDriver::txRx, this);
+
+}
+
+void UsbRfDriver::init() {
+
+	remoteCall<INIT, None>();
 
 }
 
@@ -66,7 +73,9 @@ void UsbRfDriver::connect() {
 
 		connected = true;
 
-		//data_th = new std::thread(&UsbRfDriver::txRx, this);
+		init();
+
+		//
 	}
 }
 
@@ -92,8 +101,7 @@ uint8_t UsbRfDriver::getChannel() {
 }
 
 void UsbRfDriver::setShortAddress(uint16_t address) {
-	//funcCallPkt<SET_SHORT_ADDRESS, uint16_t> f(address);
-	remoteCall<SET_SHORT_ADDRESS, None, uint32_t>(address);
+	remoteCall<SET_SHORT_ADDRESS, None, uint16_t>(address);
 }
 
 uint16_t UsbRfDriver::getShortAddress() {
@@ -125,19 +133,36 @@ uint8_t UsbRfDriver::getFrameLength() {
 
 
 void UsbRfDriver::txRx() {
+	uint8_t buffer[128];
+	XPCC_LOG_INFO .printf("start read thread\n");
+	while(connected && device != 0) {
+		int res, read;
 
-	while(connected) {
-
+		res = libusb_bulk_transfer(device, inBulk, buffer, 128, &read, 500);
+		if(res == 0) {
+			XPCC_LOG_INFO .printf("read frame %d\n", read);
+		}
 
 	}
 }
 
 
-
 RadioStatus UsbRfDriver::sendFrame(bool blocking) {
+
+	return remoteCall<SEND_FRAME, RadioStatus>();
 }
 
 RadioStatus UsbRfDriver::sendFrame(const Frame& frame, bool blocking) {
+	int written;
+	int result;
+	result = libusb_bulk_transfer(device, outBulk, frame.data, frame.data_len, &written, 500);
+	if(result != 0) {
+		XPCC_LOG_DEBUG .printf("Frame Bulk write failed\n");
+		return RadioStatus::TIMED_OUT;
+	}
+
+	return remoteCall<UPLOAD_SEND_FRAME, RadioStatus>();
+
 }
 
 bool UsbRfDriver::readFrame(Frame& frame) {

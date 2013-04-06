@@ -13,7 +13,8 @@
 #include <xpcc/debug.hpp>
 
 #include <xpcc/driver/connectivity/wireless/at86rf230.hpp>
-#include <xpcc/communication/TinyRadioProtocol.hpp>
+
+#include "usb_rf_driver.hpp"
 
 using namespace xpcc;
 
@@ -72,110 +73,9 @@ public:
 	}
 };
 
-#define CONFIG1_DESC_SIZE (9+9+7+7+7+7)
-class USBInterface : public lpc17::USBDevice {
-public:
-	USBInterface() : xpcc::lpc17::USBDevice(0xFFFF, 0x0708, 0) {}
-
-	uint8_t * configurationDesc() override {
-	    static const uint8_t configDescriptor[] = {
-	        // configuration descriptor
-	        9,                      // bLength
-	        2,                      // bDescriptorType
-	        LSB(CONFIG1_DESC_SIZE), // wTotalLength
-	        MSB(CONFIG1_DESC_SIZE),
-	        1,                      // bNumInterfaces
-	        1,                      // bConfigurationValue
-	        0,                      // iConfiguration
-	        0x80,                   // bmAttributes
-	        50,                     // bMaxPower
-
-	        // interface descriptor, USB spec 9.6.5, page 267-269, Table 9-12
-	        9,                          // bLength
-	        4,                          // bDescriptorType
-	        0,                          // bInterfaceNumber
-	        0,                          // bAlternateSetting
-	        4,                          // bNumEndpoints
-	        0x00,                       // bInterfaceClass
-	        0x00,                       // bInterfaceSubClass
-	        0x00,                       // bInterfaceProtocol
-	        0,                          // iInterface
-
-	        // endpoint descriptor, USB spec 9.6.6, page 269-271, Table 9-13
-	        ENDPOINT_DESCRIPTOR_LENGTH, // bLength
-	        ENDPOINT_DESCRIPTOR,        // bDescriptorType
-	        PHY_TO_DESC(EPINT_IN),     // bEndpointAddress
-	        E_INTERRUPT,                     // bmAttributes (0x02=bulk)
-	        LSB(MAX_PACKET_SIZE_EPINT),// wMaxPacketSize (LSB)
-	        MSB(MAX_PACKET_SIZE_EPINT),// wMaxPacketSize (MSB)
-	        1,                          // bInterval
-
-	        // endpoint descriptor, USB spec 9.6.6, page 269-271, Table 9-13
-	        ENDPOINT_DESCRIPTOR_LENGTH, // bLength
-	        ENDPOINT_DESCRIPTOR,        // bDescriptorType
-	        PHY_TO_DESC(EPINT_OUT),    // bEndpointAddress
-	        E_INTERRUPT,                     // bmAttributes (0x02=bulk)
-	        LSB(MAX_PACKET_SIZE_EPINT),// wMaxPacketSize (LSB)
-	        MSB(MAX_PACKET_SIZE_EPINT),// wMaxPacketSize (MSB)
-	        1,
-
-	        // bInterval
-	        // endpoint descriptor, USB spec 9.6.6, page 269-271, Table 9-13
-	        ENDPOINT_DESCRIPTOR_LENGTH, // bLength
-	        ENDPOINT_DESCRIPTOR,        // bDescriptorType
-	        PHY_TO_DESC(EPBULK_IN),     // bEndpointAddress
-	        E_BULK,                     // bmAttributes (0x02=bulk)
-	        LSB(MAX_PACKET_SIZE_EPBULK),// wMaxPacketSize (LSB)
-	        MSB(MAX_PACKET_SIZE_EPBULK),// wMaxPacketSize (MSB)
-	        0,                          // bInterval
-
-	        // endpoint descriptor, USB spec 9.6.6, page 269-271, Table 9-13
-	        ENDPOINT_DESCRIPTOR_LENGTH, // bLength
-	        ENDPOINT_DESCRIPTOR,        // bDescriptorType
-	        PHY_TO_DESC(EPBULK_OUT),    // bEndpointAddress
-	        E_BULK,                     // bmAttributes (0x02=bulk)
-	        LSB(MAX_PACKET_SIZE_EPBULK),// wMaxPacketSize (LSB)
-	        MSB(MAX_PACKET_SIZE_EPBULK),// wMaxPacketSize (MSB)
-	        0                           // bInterval
-	    };
-	    return (uint8_t*)configDescriptor;
-	}
-
-	bool USBCallback_setConfiguration(uint8_t configuration) override {
-		if(configuration != 1) {
-			return false;
-		}
-
-		addEndpoint(EPBULK_OUT, MAX_PACKET_SIZE_EPBULK);
-		addEndpoint(EPBULK_IN,  MAX_PACKET_SIZE_EPBULK);
-		addEndpoint(EPINT_OUT, MAX_PACKET_SIZE_EPINT);
-		addEndpoint(EPINT_IN, MAX_PACKET_SIZE_EPINT);
-
-		readStart(EPINT_OUT, 64);
-		readStart(EPBULK_OUT, 64);
-
-		return true;
-	}
+xpcc::rf230::Driver<xpcc::lpc::SpiMaster1, radioRst, radioSel, radioSlpTr, radioIrq> rf230drvr;
 
 
-	bool EP1_IN_callback() override {
-		return false;
-	}
-
-	bool EP1_OUT_callback() override {
-		XPCC_LOG_DEBUG .printf("OUT1\n");
-		return true;
-	}
-
-	bool EP2_IN_callback() override {
-		return false;
-	}
-
-	bool EP2_OUT_callback() override {
-		XPCC_LOG_DEBUG .printf("OUT2\n");
-		return true;
-	}
-};
 
 USBInterface usb;
 
@@ -195,7 +95,7 @@ UARTDevice uart(115200);
 //xpcc::log::Logger xpcc::log::debug(device);
 xpcc::log::Logger xpcc::log::debug(uart);
 
-xpcc::rf230::Driver<xpcc::lpc::SpiMaster1, radioRst, radioSel, radioSlpTr, radioIrq> rf230drvr;
+
 
 
 enum { r0, r1, r2, r3, r12, lr, pc, psr};
@@ -251,7 +151,7 @@ int main() {
 	lpc17::SysTickTimer::attachInterrupt(sysTick);
 
 	greenLed::setOutput(0);
-	redLed::setOutput(0);
+	redLed::setOutput(1);
 
 	xpcc::Random::seed();
 
@@ -266,32 +166,7 @@ int main() {
 	usb.connect();
 
 
-	//radio.init();
-
-	//radio.setPanId(0x1234);
-	//radio.setAddress(0x3210);
-
-
-	//rf230drvr.rxOn();
-
 
 	TickerTask::tasksRun();
 
-//	while(1) {
-//
-//		if(t.isExpired()) {
-//			//greenLed::toggle();
-//			//redLed::toggle();
-//
-//			//int x = radio.send(0x0010, (uint8_t*)"labas", 5, 0, FrameType::DATA, TX_ACKREQ | TX_ENCRYPT);
-//			//XPCC_LOG_DEBUG .printf("res %d\n", x);
-//			//radio.associate(0x0010);
-//
-//			radio.sendData((uint8_t*)0x1000, 512);
-//
-//		}
-//
-//
-//
-//	}
 }

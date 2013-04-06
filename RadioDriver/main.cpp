@@ -18,11 +18,22 @@ TinyRadioProtocol<typeof(driver), AES_CCM_32> radio(driver);
 
 
 int main() {
-	driver.init();
+	driver.initUSB();
+
+	driver.init(); //initialize radio
 
 	xpcc::log::debug .printf("Hello\n");
 
-	driver.setPanId(20);
+	driver.setPanId(0x1234);
+	driver.setShortAddress(23000);
+	driver.rxOn();
+
+	StaticFrame frm;
+	frm.data_len = 100;
+
+	XPCC_LOG_DEBUG .printf("%d\n", driver.getShortAddress());
+
+	//driver.sendFrame(frm);
 
 	while(1) {
 		sleep(1);

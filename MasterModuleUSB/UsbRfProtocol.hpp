@@ -12,6 +12,7 @@
 #include <type_traits>
 
 enum FuncId : uint8_t {
+	NOP,
 	SET_CHANNEL,
 	GET_CHANNEL,
 	SET_SHORT_ADDRESS,
@@ -21,7 +22,9 @@ enum FuncId : uint8_t {
 	RX_ON,
 	RX_OFF,
 	SEND_FRAME,
-	UPLOAD_SEND_FRAME
+	UPLOAD_SEND_FRAME,
+	CLEAR_FRAME,
+	INIT
 };
 
 enum ReqId : uint8_t {
@@ -40,7 +43,7 @@ class RfFrameData {
 
 struct unused{} __attribute__((packed));
 
-template <FuncId id, typename Targ0 = unused>
+template <FuncId id = NOP, typename Targ0 = unused>
 
 struct funcCallPkt {
 	ReqId request_id = FUNC_CALL;

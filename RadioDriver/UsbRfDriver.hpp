@@ -30,7 +30,9 @@ public:
 	UsbRfDriver();
 	virtual ~UsbRfDriver();
 
-	void init(uint16_t vendor = 0xFFFF, uint16_t product = 0x0708);
+	void initUSB(uint16_t vendor = 0xFFFF, uint16_t product = 0x0708);
+
+	void init();
 
 	RadioStatus setChannel(uint8_t channel);
 	uint8_t getChannel();
@@ -95,7 +97,13 @@ private:
 
 		if(!std::is_same<Tret, None>::value) {
 			Tret ret;
-			status = libusb_interrupt_transfer(device, inInt, (uint8_t*)&ret, sizeof(ret), 0, 500);
+			int len;
+
+			XPCC_LOG_DEBUG .printf("read\n");
+			status = libusb_interrupt_transfer(device, inInt, (uint8_t*)&ret, sizeof(Tret), &len, 500);
+			if(status != 0) {
+				XPCC_LOG_ERROR .printf("USB: Failed to read function return value\n%s\n", libusb_error_name(status));
+			}
 			return ret;
 		}
 		return (Tret)0;
