@@ -15,6 +15,7 @@ typedef void (*FrameHandler)();
 #include <libusb.h>
 #include <thread>
 #include <time.h>
+#include <semaphore.h>
 
 struct Stats {
 	uint32_t tx_bytes;
@@ -67,6 +68,10 @@ private:
 	void txRx();
 	std::thread* data_th;
 
+	void frameDispatcher();
+	sem_t wait_sem;
+
+	FrameHandler rxHandler;
 
 	libusb_context* usb_ctx;
 
@@ -82,6 +87,10 @@ private:
 	libusb_device_handle* device;
 
 	bool connected;
+
+	Stats stats;
+
+	xpcc::atomic::Queue<std::shared_ptr<Frame>, 256> rx_frames;
 
 
 	template<FuncId id, typename Tret, typename Targ0 = unused>

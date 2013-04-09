@@ -76,7 +76,6 @@ public:
 xpcc::rf230::Driver<xpcc::lpc::SpiMaster1, radioRst, radioSel, radioSlpTr, radioIrq> rf230drvr;
 
 
-
 USBInterface usb;
 
 
@@ -165,7 +164,7 @@ int main() {
 	usbConnPin::setOutput(true);
 	usb.connect();
 
-
+	NVIC_SetPriority(USB_IRQn, 5);
 
 	TickerTask::tasksRun();
 

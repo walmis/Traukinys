@@ -95,10 +95,19 @@ public:
 	void handleTick() override {
 
 		if(rx_frame.rx_flag) {
-			uint8_t* data = rx_frame.data;
-			uint8_t left = rx_frame.data_len;
 
-			XPCC_LOG_DEBUG .printf("write rx frame %d...", left);
+			RfFrameData usb_rx_frame;
+			usb_rx_frame.lqi = rx_frame.lqi;
+			usb_rx_frame.rssi = rx_frame.rssi;
+			usb_rx_frame.data_len = rx_frame.data_len;
+
+			memcpy(usb_rx_frame.frame_data, rx_frame.data, rx_frame.data_len);
+
+			uint8_t* data = (uint8_t*)&usb_rx_frame;
+			uint8_t left = sizeof(usb_rx_frame.data_len) + sizeof(usb_rx_frame.lqi) +
+					sizeof(usb_rx_frame.rssi) + rx_frame.data_len;
+
+			XPCC_LOG_DEBUG .printf("write rx frame [%d] %x...", left, rx_frame.data[2]);
 			while(left > 0) {
 				uint8_t len = (left > 64)? 64 : left;
 				write(EPBULK_IN, data, len, 64);
@@ -130,7 +139,7 @@ public:
 
 	static void rxFrameHandler() {
 		XPCC_LOG_DEBUG .printf("rx frame\n");
-		self->blinker.blink(20);
+		self->blinker.blink(40);
 		if(!self->rx_frame.rx_flag)
 			rf230drvr.readFrame(self->rx_frame);
 		else

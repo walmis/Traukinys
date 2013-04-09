@@ -15,12 +15,15 @@
 
 
 UsbRfDriver::UsbRfDriver() {
-	connect_th = 0;
 	int result;
+
+	rxHandler = 0;
+	connect_th = 0;
+
+	sem_init(&wait_sem, 0, 1);
 
 	result = libusb_init(&usb_ctx);
 	assert(result == 0);
-
 }
 
 UsbRfDriver::~UsbRfDriver() {
@@ -43,7 +46,6 @@ void UsbRfDriver::initUSB(uint16_t vendor, uint16_t product) {
 	connect();
 
 	connect_th = new std::thread(&UsbRfDriver::reconnect, this);
-	data_th = new std::thread(&UsbRfDriver::txRx, this);
 
 }
 
@@ -68,14 +70,16 @@ void UsbRfDriver::connect() {
 
 			return;
 		}
+		connected = true;
 
 		XPCC_LOG_INFO.printf("USB: Device successfully initialized\n");
 
-		connected = true;
+		std::thread th(&UsbRfDriver::frameDispatcher, this);
+		th.detach();
+
+		data_th = new std::thread(&UsbRfDriver::txRx, this);
 
 		init();
-
-		//
 	}
 }
 
@@ -88,8 +92,6 @@ void UsbRfDriver::reconnect() {
 
 		usleep(500000);
 	}
-
-
 }
 
 RadioStatus UsbRfDriver::setChannel(uint8_t channel) {
@@ -118,6 +120,7 @@ uint16_t UsbRfDriver::getPanId() {
 }
 
 void UsbRfDriver::setRxFrameHandler(FrameHandler func) {
+	rxHandler = func;
 }
 
 void UsbRfDriver::rxOn() {
@@ -129,26 +132,64 @@ void UsbRfDriver::rxOff() {
 }
 
 uint8_t UsbRfDriver::getFrameLength() {
+	if(rx_frames.isEmpty())
+		return 0;
+
+	return rx_frames.get()->data_len;
 }
 
 
 void UsbRfDriver::txRx() {
-	uint8_t buffer[128];
+	RfFrameData data;
+
 	XPCC_LOG_INFO .printf("start read thread\n");
 	while(connected && device != 0) {
 		int res, read;
 
-		res = libusb_bulk_transfer(device, inBulk, buffer, 128, &read, 500);
+		res = libusb_bulk_transfer(device, inBulk, (uint8_t*)&data, sizeof(RfFrameData), &read, 0);
 		if(res == 0) {
 			XPCC_LOG_INFO .printf("read frame %d\n", read);
-		}
 
+			std::shared_ptr<HeapFrame> frm(new HeapFrame);
+
+			if(frm->allocate(read)) {
+				memcpy(frm->data, data.frame_data, data.data_len);
+
+				frm->data_len = data.data_len;
+				frm->rx_flag = true;
+				frm->rssi = data.rssi;
+				frm->lqi = data.lqi;
+
+				XPCC_LOG_DEBUG .printf("f %x\n", frm->data[2]);
+
+
+				rx_frames.push(frm);
+				sem_post(&wait_sem);
+			}
+
+		} else if(res == LIBUSB_ERROR_NO_DEVICE) {
+			XPCC_LOG_INFO .printf("Disconnected\n");
+			connected = false;
+			libusb_close(device);
+		} else {
+			XPCC_LOG_ERROR .printf("USB: %s\n", libusb_error_name(res));
+		}
 	}
 }
 
+void UsbRfDriver::frameDispatcher() {
+	while(connected) {
+		//wait for new frames
+		sem_wait(&wait_sem);
+
+		if(rxHandler) {
+			rxHandler();
+		}
+	}
+}
 
 RadioStatus UsbRfDriver::sendFrame(bool blocking) {
-
+	stats.tx_frames++;
 	return remoteCall<SEND_FRAME, RadioStatus>();
 }
 
@@ -161,12 +202,31 @@ RadioStatus UsbRfDriver::sendFrame(const Frame& frame, bool blocking) {
 		return RadioStatus::TIMED_OUT;
 	}
 
+	stats.tx_frames++;
+	stats.tx_bytes += frame.data_len;
+
 	return remoteCall<UPLOAD_SEND_FRAME, RadioStatus>();
 
 }
 
 bool UsbRfDriver::readFrame(Frame& frame) {
+
+	if(rx_frames.isEmpty())
+		return false;
+
+	auto f = rx_frames.get();
+	rx_frames.pop();
+
+	stats.rx_frames++;
+	stats.rx_bytes += f->data_len;
+
+	frame.rx_flag = true;
+	memcpy(frame.data, f->data, f->data_len);
+	frame.data_len = f->data_len;
+	frame.lqi = f->lqi;
+	frame.rssi = f->rssi;
 }
 
 Stats* UsbRfDriver::getStats() {
+	return &stats;
 }

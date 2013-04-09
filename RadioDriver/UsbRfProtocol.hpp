@@ -34,10 +34,11 @@ enum ReqId : uint8_t {
 };
 
 
-class RfFrameData {
+struct RfFrameData {
 	uint8_t lqi;
 	uint8_t rssi;
 	uint8_t data_len;
+	uint8_t frame_data[127];
 } __attribute__((packed));
 
 

@@ -100,6 +100,16 @@
 		</scannerConfigBuildInfo>
 		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.release.559450617;cdt.managedbuild.config.gnu.exe.release.559450617.;cdt.managedbuild.tool.gnu.cpp.compiler.exe.release.708811444;cdt.managedbuild.tool.gnu.cpp.compiler.input.881661948">
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfileCPP"/>
+			<profile id="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfileCPP">
+				<buildOutputProvider>
+					<openAction enabled="true" filePath=""/>
+					<parser enabled="true"/>
+				</buildOutputProvider>
+				<scannerInfoProvider id="specsFile">
+					<runAction arguments="-E -P -std=gnu++11 -v -dD &quot;${plugin_state_location}/specs.cpp&quot;" command="g++" useDefault="true"/>
+					<parser enabled="true"/>
+				</scannerInfoProvider>
+			</profile>
 		</scannerConfigBuildInfo>
 	</storageModule>
 </cproject>
