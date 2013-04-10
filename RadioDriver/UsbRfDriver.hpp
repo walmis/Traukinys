@@ -16,6 +16,8 @@ typedef void (*FrameHandler)();
 #include <thread>
 #include <time.h>
 #include <semaphore.h>
+#include <exception>
+#include <string>
 
 struct Stats {
 	uint32_t tx_bytes;
@@ -25,6 +27,24 @@ struct Stats {
 };
 
 typedef int None;
+
+class USBException : public std::exception {
+public:
+	USBException(std::string msg, int code = 0) {
+		this->msg = msg;
+		if(code) {
+			this->msg.append(": ");
+			this->msg.append(libusb_error_name(code));
+		}
+		this->code = code;
+	}
+	virtual const char* what() const throw () {
+		return msg.c_str();
+	}
+private:
+	std::string msg;
+	int code;
+};
 
 class UsbRfDriver {
 public:
@@ -95,23 +115,25 @@ private:
 
 	template<FuncId id, typename Tret, typename Targ0 = unused>
 	Tret remoteCall(Targ0 arg = {}) {
+		if(!device) {
+			throw USBException("USB not connected");
+		}
 		funcCallPkt<id, Targ0> f(arg);
 		int transferred = 0;
 
 		int status = libusb_interrupt_transfer(device, outInt, f.data(), f.size(), &transferred, 500);
 		if(status != 0) {
-			XPCC_LOG_ERROR .printf("USB: Transfer failed \n%s\n", libusb_error_name(status));
-			return (Tret)0;
+			throw USBException("USB: Transfer failed", status);
 		}
 
 		if(!std::is_same<Tret, None>::value) {
 			Tret ret;
 			int len;
 
-			XPCC_LOG_DEBUG .printf("read\n");
+			//XPCC_LOG_DEBUG .printf("read\n");
 			status = libusb_interrupt_transfer(device, inInt, (uint8_t*)&ret, sizeof(Tret), &len, 500);
 			if(status != 0) {
-				XPCC_LOG_ERROR .printf("USB: Failed to read function return value\n%s\n", libusb_error_name(status));
+				throw USBException("USB: Failed to read function return value", status);
 			}
 			return ret;
 		}

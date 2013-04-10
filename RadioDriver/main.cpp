@@ -11,6 +11,7 @@
 #include <xpcc/communication/TinyRadioProtocol.hpp>
 
 #include "UsbRfDriver.hpp"
+#include "PyInterface.hpp"
 
 UsbRfDriver driver;
 
@@ -40,9 +41,11 @@ int main() {
 
 	StaticFrame frm;
 	MacFrame m(frm);
+
 	m.build();
-	m.setDstAddress(0xFFFF);
-	m.setSrcAddress(0x5454, 0x1234);
+	m.ackRequired(true);
+	m.setDstAddress(0xFFFD, 0x1234);
+	m.setSrcAddress(0x5454);
 
 	XPCC_LOG_DEBUG .dump_buffer(frm.data, frm.data_len);
 

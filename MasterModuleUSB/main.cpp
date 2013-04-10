@@ -95,8 +95,6 @@ UARTDevice uart(115200);
 xpcc::log::Logger xpcc::log::debug(uart);
 
 
-
-
 enum { r0, r1, r2, r3, r12, lr, pc, psr};
 
 extern "C" void HardFault_Handler(void)
@@ -104,6 +102,7 @@ extern "C" void HardFault_Handler(void)
   asm volatile("MRS r0, MSP;"
 		       "B Hard_Fault_Handler");
 }
+
 
 extern "C"
 void Hard_Fault_Handler(uint32_t stack[]) {

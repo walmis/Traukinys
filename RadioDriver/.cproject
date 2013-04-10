@@ -3,7 +3,13 @@
 	<storageModule moduleId="org.eclipse.cdt.core.settings">
 		<cconfiguration id="cdt.managedbuild.config.gnu.exe.release.559450617">
 			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="cdt.managedbuild.config.gnu.exe.release.559450617" moduleId="org.eclipse.cdt.core.settings" name="Release">
-				<externalSettings/>
+				<externalSettings>
+					<externalSetting>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/RadioDriver"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/RadioDriver/Release"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="RadioDriver" srcPrefixMapping="" srcRootPath=""/>
+					</externalSetting>
+				</externalSettings>
 				<extensions>
 					<extension id="org.eclipse.cdt.core.ELF" point="org.eclipse.cdt.core.BinaryParser"/>
 					<extension id="org.eclipse.cdt.core.GmakeErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
@@ -14,7 +20,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.exe" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.exe" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.exe.release.559450617" name="Release" parent="cdt.managedbuild.config.gnu.exe.release">
+				<configuration artifactExtension="so" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.exe.release.559450617" name="Release" parent="cdt.managedbuild.config.gnu.exe.release">
 					<folderInfo id="cdt.managedbuild.config.gnu.exe.release.559450617." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.exe.release.1269108285" name="Linux GCC" resourceTypeBasedDiscovery="true" superClass="cdt.managedbuild.toolchain.gnu.exe.release">
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.exe.release.1450403898" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.exe.release"/>
@@ -24,31 +30,42 @@
 								<option id="gnu.cpp.compiler.exe.release.option.optimization.level.1434653589" name="Optimization Level" superClass="gnu.cpp.compiler.exe.release.option.optimization.level" value="gnu.cpp.compiler.optimization.level.most" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.exe.release.option.debugging.level.937000379" name="Debug Level" superClass="gnu.cpp.compiler.exe.release.option.debugging.level" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1797364301" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc}&quot;"/>
 									<listOptionValue builtIn="false" value="/usr/include/libusb-1.0"/>
+									<listOptionValue builtIn="false" value="/usr/include/python2.7"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc/src}&quot;"/>
 								</option>
-								<option id="gnu.cpp.compiler.option.other.other.34892592" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=gnu++11" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.other.other.34892592" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -std=gnu++11 " valueType="string"/>
+								<option id="gnu.cpp.compiler.option.other.pic.780768804" superClass="gnu.cpp.compiler.option.other.pic" value="true" valueType="boolean"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.881661948" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.exe.release.894088691" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.exe.release">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.exe.release.option.optimization.level.1993958659" name="Optimization Level" superClass="gnu.c.compiler.exe.release.option.optimization.level" valueType="enumerated"/>
 								<option id="gnu.c.compiler.exe.release.option.debugging.level.956458329" name="Debug Level" superClass="gnu.c.compiler.exe.release.option.debugging.level" value="gnu.c.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.1919053929" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc}&quot;"/>
 									<listOptionValue builtIn="false" value="/usr/include/libusb-1.0"/>
+									<listOptionValue builtIn="false" value="/usr/include/python2.7"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc}&quot;"/>
 								</option>
+								<option id="gnu.c.compiler.option.misc.other.1686319714" superClass="gnu.c.compiler.option.misc.other" value="-c -fmessage-length=0 -fPIC" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.355606036" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
-							<tool id="cdt.managedbuild.tool.gnu.c.linker.exe.release.954383952" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.release"/>
+							<tool id="cdt.managedbuild.tool.gnu.c.linker.exe.release.954383952" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.release">
+								<option defaultValue="true" id="gnu.c.link.option.shared.446921323" name="Shared (-shared)" superClass="gnu.c.link.option.shared" valueType="boolean"/>
+							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.exe.release.1095335356" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.release">
 								<option id="gnu.cpp.link.option.paths.1732724562" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc/Linux}&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.libs.288949443" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="xpcc"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="usb-1.0"/>
+									<listOptionValue builtIn="false" value="xpcc"/>
+									<listOptionValue builtIn="false" value="usb-1.0"/>
+									<listOptionValue builtIn="false" value="boost_python"/>
+									<listOptionValue builtIn="false" value="python2.7"/>
+									<listOptionValue builtIn="false" value="usb-1.0"/>
+									<listOptionValue builtIn="false" value="python2.7"/>
 								</option>
+								<option defaultValue="true" id="gnu.cpp.link.option.shared.1473715527" name="Shared (-shared)" superClass="gnu.cpp.link.option.shared" valueType="boolean"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1408344488" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
@@ -65,14 +82,6 @@
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings">
-				<externalSettings containerId="org.eclipse.cdt.managedbuilder.pkgconfig.extSettings" factoryId="org.eclipse.cdt.core.extension.container.factory">
-					<externalSetting contentTypes="org.eclipse.cdt.core.cSource:org.eclipse.cdt.core.cxxSource">
-						<entry flags="BUILTIN" kind="includePath" name="/usr/include/libusb-1.0"/>
-					</externalSetting>
-					<externalSetting contentTypes="org.eclipse.cdt.managedbuilder.core.compiledObjectFile">
-						<entry flags="UNDEFINED" kind="libraryFile" name="usb-1.0" srcPrefixMapping="" srcRootPath=""/>
-					</externalSetting>
-				</externalSettings>
 				<externalSettings containerId="xpcc;cdt.managedbuild.config.gnu.cross.exe.release.735040115.1328026338" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/xpcc"/>
@@ -80,8 +89,18 @@
 						<entry flags="RESOLVED" kind="libraryFile" name="xpcc" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
+				<externalSettings containerId="org.eclipse.cdt.managedbuilder.pkgconfig.extSettings" factoryId="org.eclipse.cdt.core.extension.container.factory">
+					<externalSetting contentTypes="org.eclipse.cdt.core.cSource:org.eclipse.cdt.core.cxxSource">
+						<entry flags="BUILTIN" kind="includePath" name="/usr/include/libusb-1.0"/>
+						<entry flags="BUILTIN" kind="includePath" name="/usr/include/python2.7"/>
+					</externalSetting>
+					<externalSetting contentTypes="org.eclipse.cdt.managedbuilder.core.compiledObjectFile">
+						<entry flags="UNDEFINED" kind="libraryFile" name="usb-1.0" srcPrefixMapping="" srcRootPath=""/>
+						<entry flags="UNDEFINED" kind="libraryFile" name="python2.7" srcPrefixMapping="" srcRootPath=""/>
+					</externalSetting>
+				</externalSettings>
 			</storageModule>
-			<storageModule bash-completion="false" compizconfig-python="false" dbus-python="false" fontutil="false" gnome-icon-theme="false" ibus-table="false" ice="false" inputproto="false" iso-codes="false" kbproto="false" libquvi-scripts="false" libusb-1.0="true" mobile-broadband-provider-info="false" moduleId="packages" nautilus-sendto="false" notify-python="false" pm-utils="false" pthread-stubs="false" shared-mime-info="false" sm="false" udev="false" udisks="false" usbutils="false" x11="false" xau="false" xbitmaps="false" xcb="false" xdmcp="false" xkeyboard-config="false" xorg-sgml-doctools="false" xorg-wacom="false" xproto="false" xt="false" xtrans="false" yelp-xsl="false"/>
+			<storageModule bash-completion="false" compizconfig-python="false" dbus-python="false" expat="false" fontutil="false" gnome-icon-theme="false" ibus-table="false" ice="false" inputproto="false" iso-codes="false" kbproto="false" libcrypto="false" libquvi-scripts="false" libssl="false" libusb-1.0="true" mobile-broadband-provider-info="false" moduleId="packages" nautilus-sendto="false" notify-python="false" openssl="false" pm-utils="false" pthread-stubs="false" python="false" python-2.7="true" shared-mime-info="false" sm="false" udev="false" udisks="false" usbutils="false" x11="false" xau="false" xbitmaps="false" xcb="false" xdmcp="false" xkeyboard-config="false" xorg-sgml-doctools="false" xorg-wacom="false" xproto="false" xt="false" xtrans="false" yelp-xsl="false" zlib="false"/>
 		</cconfiguration>
 	</storageModule>
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">

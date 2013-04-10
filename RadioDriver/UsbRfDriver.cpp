@@ -20,7 +20,7 @@ UsbRfDriver::UsbRfDriver() {
 	rxHandler = 0;
 	connect_th = 0;
 
-	sem_init(&wait_sem, 0, 1);
+	sem_init(&wait_sem, 0, 0);
 
 	result = libusb_init(&usb_ctx);
 	assert(result == 0);
@@ -160,9 +160,7 @@ void UsbRfDriver::txRx() {
 				frm->rssi = data.rssi;
 				frm->lqi = data.lqi;
 
-				XPCC_LOG_DEBUG .printf("f %x\n", frm->data[2]);
-
-
+				//XPCC_LOG_DEBUG .printf("f %x\n", frm->data[2]);
 				rx_frames.push(frm);
 				sem_post(&wait_sem);
 			}
@@ -181,9 +179,12 @@ void UsbRfDriver::frameDispatcher() {
 	while(connected) {
 		//wait for new frames
 		sem_wait(&wait_sem);
+		//XPCC_LOG_DEBUG .printf("frames pending %d\n", rx_frames.stored());
 
 		if(rxHandler) {
 			rxHandler();
+		} else {
+			rx_frames.pop();
 		}
 	}
 }
