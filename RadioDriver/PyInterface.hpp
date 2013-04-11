@@ -151,13 +151,6 @@ public:
 
 	}
 
-//	void vtest() {
-//		if (auto f = this->get_override("vtest")) {
-//			f(); // *note*
-//			return;
-//		}
-//		Radio::vtest();
-//	}
 
 };
 
@@ -166,16 +159,22 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(send_overloads, send, 3, 6);
 bool  (Radio::*send_request)(uint16_t, uint8_t, uint8_t*,
 		uint8_t, uint8_t)    = &Radio::sendRequest;
 
+bool (Radio::*sendResponse)(uint8_t*, uint8_t, uint8_t) = &Radio::sendResponse;
+
 void translator(USBException const & x) {
     PyErr_SetString(PyExc_IOError, x.what());
 }
 
-void beacon_set_name(BeaconFrame* frm, uint8_t* name) {
-	memcpy(frm->name, name, 16);
+
+object MacFrame_getPayload(MacFrame* f) {
+    return object(handle<>(PyBuffer_FromReadWriteMemory(f->getPayload(), f->getPayloadSize())));
 }
 
-void beacon_set_data(BeaconFrame* frm, uint8_t* data) {
-	memcpy(frm->data, data, 8);
+template <typename O, char* (O::*G)(), int size>
+object getMembuffer(O* f) {
+    PyObject* buf = PyBuffer_FromReadWriteMemory((f->*G)(), size);
+
+   return object(handle<>(buf));
 }
 
 
@@ -184,7 +183,39 @@ BOOST_PYTHON_MODULE(usbradio)
 	register_exception_translator<USBException>(translator);
 
 	class_<Frame>("Frame");
-	//class_<MacFrame>("MacFrame");
+
+	enum_<MacFrame::FcfFrameType>("FcfFrameType")
+		.value("BEACON", MacFrame::FcfFrameType::BEACON)
+		.value("DATA", MacFrame::FcfFrameType::DATA)
+		.value("ACK", MacFrame::FcfFrameType::ACK)
+		.value("MAC_COMMAND", MacFrame::FcfFrameType::MAC_COMMAND);
+
+	enum_<MacFrame::AddrMode>("AddrMode")
+		.value("ADDRESS_NOT_PRESENT", MacFrame::AddrMode::ADDRESS_NOT_PRESENT)
+		.value("RESERVED0",MacFrame::AddrMode::RESERVED0)
+		.value("ADDRESS_16BIT",MacFrame::AddrMode::ADDRESS_16BIT)
+		.value("ADDRESS_64BIT_EXTENDED",MacFrame::AddrMode::ADDRESS_64BIT_EXTENDED);
+
+	class_<MacFrame>("MacFrame", init<Frame&>())
+			.def("assign", &MacFrame::assign)
+			.def("isSecure", &MacFrame::isSecure)
+			.def("setType", &MacFrame::setType)
+			.def("ackRequired", &MacFrame::ackRequired)
+			.def("getFrame", &MacFrame::getFrame, return_value_policy<reference_existing_object>())
+			.def("getSrcAddress", &MacFrame::getSrcAddress)
+			.def("getSrcPan", &MacFrame::getSrcAddress)
+			.def("getDstAddress", &MacFrame::getDstAddress)
+			.def("getDstPan", &MacFrame::getDstPan)
+			.def("build", &MacFrame::build)
+			.def("setSrcAddress", &MacFrame::setSrcAddress)
+			.def("setDstAddress", &MacFrame::setDstAddress)
+			.def("setSeq", &MacFrame::setSeq)
+			.def("getSeq", &MacFrame::getSeq)
+			.def("getMaxPayload", &MacFrame::getMaxPayload)
+			.def("getPayload", MacFrame_getPayload)
+			.def("getPayloadSize", &MacFrame::getPayloadSize)
+			.def("addData", &MacFrame::addData)
+			.def("clear", &MacFrame::clear);
 
 	enum_<EventType>("EventType")
 			.value("ASSOCIATION_EVENT", EventType::ASSOCIATION_EVENT)
@@ -208,8 +239,10 @@ BOOST_PYTHON_MODULE(usbradio)
 			.def("rxOff", &UsbRfDriver::rxOff);
 
 	class_<BeaconFrame>("BeaconFrame")
-			.def("setName", beacon_set_name)
-			.def("setData", beacon_set_data);
+			.add_property("name", getMembuffer<BeaconFrame, &BeaconFrame::getName, 16>)
+			.add_property("data", getMembuffer<BeaconFrame, &BeaconFrame::getData, 8>);
+
+
 
 	class_<RadioWrapper, boost::noncopyable>("TinyRadioProtocol")
 			.def("init", &Radio::init)
@@ -225,7 +258,10 @@ BOOST_PYTHON_MODULE(usbradio)
 			.def("send", &Radio::send, send_overloads())
 			.def("sendRequest", send_request)
 
+			.def("sendResponse", sendResponse)
+
 			.def("listNodes", &Radio::listNodes)
+			.def("findNode", &Radio::findNode, return_value_policy<reference_existing_object>())
 
 			.def("frameHandler", &RadioWrapper::frameHandler)
 			.def("dataHandler", &RadioWrapper::dataHandler)

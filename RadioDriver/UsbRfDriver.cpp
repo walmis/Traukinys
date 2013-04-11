@@ -65,10 +65,7 @@ void UsbRfDriver::connect() {
 
 		ret = libusb_claim_interface(device, 0);
 		if (ret != 0) {
-			XPCC_LOG_ERROR.printf("USB: Failed to claim interface 0\n%s\n",
-					libusb_error_name(ret));
-
-			return;
+			throw USBException("USB: Failed to claim interface 0", ret);
 		}
 		connected = true;
 
@@ -143,7 +140,7 @@ void UsbRfDriver::txRx() {
 	RfFrameData data;
 
 	XPCC_LOG_INFO .printf("start read thread\n");
-	while(connected && device != 0) {
+	while(connected && device) {
 		int res, read;
 
 		res = libusb_bulk_transfer(device, inBulk, (uint8_t*)&data, sizeof(RfFrameData), &read, 0);
@@ -197,6 +194,9 @@ RadioStatus UsbRfDriver::sendFrame(bool blocking) {
 RadioStatus UsbRfDriver::sendFrame(const Frame& frame, bool blocking) {
 	int written;
 	int result;
+	if(!device) {
+		throw USBException("USB not connected");
+	}
 	result = libusb_bulk_transfer(device, outBulk, frame.data, frame.data_len, &written, 500);
 	if(result != 0) {
 		XPCC_LOG_DEBUG .printf("Frame Bulk write failed\n");
