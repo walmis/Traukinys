@@ -29,28 +29,29 @@ extern "C" void HardFault_Handler() {
 	while(1);
 }
 
-rf230::Driver<lpc::SpiMaster0, rfReset, rfSel, rfSlpTr, rfIrq> at_radio;
-class TrainRadio : public TinyRadioProtocol<typeof(at_radio), AES_CCM_32> {
-public:
-	TrainRadio() : TinyRadioProtocol(at_radio) {
+enum TrainCommands {
+	START = 16,
+	STOP,
+	BRAKE,
+	SET_SPEED,
+	REVERSE,
+	FORWARD,
 
-	}
+	GET_SPEED,
 
+	GPIO_DIR,
+	GPIO_READ,
+	GPIO_SET,
 
-	bool frameHandler(Frame &rxFrame) {
-		blinker.blink(50);
-		return true;
-	}
+	SPEED_REPORT
 
-	Blinker<xpcc::gpio::Invert<led>> blinker;
 };
 
-TrainRadio radio;
+
 
 void systick_handler() {
 
 	if(!progPin::read()) {
-		XPCC_LOG_DEBUG .printf("reset\n");
 		NVIC_SystemReset();
 	}
 
@@ -188,6 +189,117 @@ int to_int(char *p) {
 
 MotorControl motorControl;
 
+
+rf230::Driver<lpc::SpiMaster0, rfReset, rfSel, rfSlpTr, rfIrq> at_radio;
+class TrainRadio : public TinyRadioProtocol<typeof(at_radio), AES_CCM_32> {
+public:
+	TrainRadio() : TinyRadioProtocol(at_radio),	speedReport(250)
+	{
+	}
+
+	bool frameHandler(Frame &rxFrame) {
+		blinker.blink(50);
+		return true;
+	}
+
+	void prepareBeacon(BeaconFrame &beacon) override {
+		strcpy(beacon.name, "Traukinys");
+		strcpy(beacon.data, "0");
+	}
+
+	void handleTick() override {
+		if(motorControl.getSpeed() != 0 && speedReport.isExpired()) {
+			for(auto node : connectedNodes) {
+				uint32_t speed = motorControl.getSpeed();
+
+				blinker.blink(50);
+				send(node->address, (uint8_t*)&speed, sizeof(speed), SPEED_REPORT);
+			}
+		}
+
+		TinyRadioProtocol<typeof(at_radio), AES_CCM_32>::handleTick();
+	}
+
+	void eventHandler(uint16_t address, EventType event) override {
+
+		if(event == EventType::DISASSOCIATION_EVENT) {
+
+			if(connectedNodes.getSize() == 1) { //last one
+				motorControl.stop();
+			}
+
+		}
+	}
+
+	void requestHandler(MacFrame &frm, uint16_t address,
+			uint8_t request_type, uint8_t* data, uint8_t len) override {
+
+		if(!isAssociated(address)) {
+			//send dissasociation packet
+			disassociate(address, true);
+			return;
+		}
+		XPCC_LOG_DEBUG .printf("Request %d\n", request_type);
+
+		bool res = true;
+		switch(request_type) {
+
+			case START: {
+				motorControl.run();
+				sendResponse<bool>(res);
+				break;
+			}
+			case STOP: {
+				motorControl.stop();
+				sendResponse<bool>(res);
+				break;
+			}
+			case BRAKE:
+				motorControl.brake();
+				sendResponse<bool>(res);
+				break;
+
+			case SET_SPEED: {
+				if(len == 1) {
+					motorControl.setSpeed(data[0]);
+				}
+				sendResponse<bool>(res);
+
+				break;
+			}
+			case REVERSE:
+				motorControl.setDirection(true);
+				sendResponse<bool>(res);
+				break;
+
+			case FORWARD:
+				motorControl.setDirection(false);
+				sendResponse<bool>(res);
+				break;
+
+			case GET_SPEED:
+				break;
+
+			case GPIO_DIR:
+				break;
+
+			case GPIO_READ:
+				break;
+
+			case GPIO_SET:
+				break;
+
+		}
+
+	}
+private:
+	xpcc::PeriodicTimer<> speedReport;
+	Blinker<xpcc::gpio::Invert<led>> blinker;
+};
+
+TrainRadio radio;
+
+
 class Terminal : xpcc::TickerTask {
 	char buffer[32];
 	uint8_t pos = 0;
@@ -254,7 +366,6 @@ int main() {
 
 
 	motorControl.init();
-	//at_radio.init();
 
 	led::set(1);
 

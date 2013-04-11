@@ -19,6 +19,7 @@ using namespace boost::python;
 
 class Radio : public TinyRadioProtocol<UsbRfDriver, AES_CCM_32> {
 public:
+	typedef TinyRadioProtocol<UsbRfDriver, AES_CCM_32> Base;
 	Radio() : TinyRadioProtocol<UsbRfDriver, AES_CCM_32>(driver) {
 		driver.initUSB();
 		sem_init(&sem, 0, 0);
@@ -33,7 +34,6 @@ public:
 		XPCC_LOG_DEBUG .printf("rx handler\n");
 		self->rxHandler();
 
-		self->handleTick();
 		sem_post(&(static_cast<Radio*>(self)->sem));
 	}
 
@@ -55,6 +55,15 @@ public:
 		sem_timedwait(&sem, &tm);
 
 		self->handleTick();
+	}
+
+	void test(std::string test) {
+		XPCC_LOG_DEBUG .printf("test\n");
+	}
+
+	bool sendRequest(uint16_t address, uint8_t req, std::string data, uint8_t flags) {
+		return Base::sendRequest(address, req, (uint8_t*)data.c_str(), data.length(), flags);
+
 	}
 
 	UsbRfDriver* getDriver() {
@@ -101,8 +110,10 @@ public:
 	void dataHandler(MacFrame &frm, FrameHdr& hdr, uint16_t address,
 				uint8_t *data, uint8_t len) {
 
+
+		std::string str((char*)data, (int)len);
 		if (auto f = this->get_override("dataHandler")){
-			f(frm, hdr, address, data, len); // *note*
+			f(frm, hdr, address, str); // *note*
 			return;
 		}
 
@@ -156,8 +167,6 @@ public:
 
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(send_overloads, send, 3, 6);
 
-bool  (Radio::*send_request)(uint16_t, uint8_t, uint8_t*,
-		uint8_t, uint8_t)    = &Radio::sendRequest;
 
 bool (Radio::*sendResponse)(uint8_t*, uint8_t, uint8_t) = &Radio::sendResponse;
 
@@ -177,6 +186,13 @@ object getMembuffer(O* f) {
    return object(handle<>(buf));
 }
 
+bool FrameHdr_data_pending(FrameHdr* f) {
+	return f->data_pending;
+}
+
+bool FrameHdr_type(FrameHdr *f) {
+	return f->type;
+}
 
 BOOST_PYTHON_MODULE(usbradio)
 {
@@ -195,6 +211,10 @@ BOOST_PYTHON_MODULE(usbradio)
 		.value("RESERVED0",MacFrame::AddrMode::RESERVED0)
 		.value("ADDRESS_16BIT",MacFrame::AddrMode::ADDRESS_16BIT)
 		.value("ADDRESS_64BIT_EXTENDED",MacFrame::AddrMode::ADDRESS_64BIT_EXTENDED);
+
+	enum_<TxFlags>("TxFlags")
+			.value("TX_ENCRYPT", TxFlags::TX_ENCRYPT)
+			.value("TX_ACKREQ", TxFlags::TX_ACKREQ);
 
 	class_<MacFrame>("MacFrame", init<Frame&>())
 			.def("assign", &MacFrame::assign)
@@ -242,7 +262,10 @@ BOOST_PYTHON_MODULE(usbradio)
 			.add_property("name", getMembuffer<BeaconFrame, &BeaconFrame::getName, 16>)
 			.add_property("data", getMembuffer<BeaconFrame, &BeaconFrame::getData, 8>);
 
-
+	class_<FrameHdr>("FrameHdr")
+			.add_property("type", FrameHdr_type)
+			.add_property("data_pending", FrameHdr_data_pending)
+			.def_readonly("req_id", &FrameHdr::req_id);
 
 	class_<RadioWrapper, boost::noncopyable>("TinyRadioProtocol")
 			.def("init", &Radio::init)
@@ -256,7 +279,7 @@ BOOST_PYTHON_MODULE(usbradio)
 			.def("getAddress", &Radio::getAddress)
 
 			.def("send", &Radio::send, send_overloads())
-			.def("sendRequest", send_request)
+			.def("sendRequest", &Radio::sendRequest)
 
 			.def("sendResponse", sendResponse)
 
@@ -274,7 +297,9 @@ BOOST_PYTHON_MODULE(usbradio)
 
 			.def("poll", &Radio::poll)
 
-			.def("getDriver", &Radio::getDriver, return_value_policy<reference_existing_object>());
+			.def("getDriver", &Radio::getDriver, return_value_policy<reference_existing_object>())
+
+			.def("test", &Radio::test);
 };
 
 

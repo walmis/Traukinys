@@ -226,6 +226,7 @@ bool UsbRfDriver::readFrame(Frame& frame) {
 	frame.data_len = f->data_len;
 	frame.lqi = f->lqi;
 	frame.rssi = f->rssi;
+	return true;
 }
 
 Stats* UsbRfDriver::getStats() {
