@@ -19,11 +19,14 @@ UsbRfDriver::UsbRfDriver() {
 
 	rxHandler = 0;
 	connect_th = 0;
+	connected = false;
 
 	sem_init(&wait_sem, 0, 0);
 
 	result = libusb_init(&usb_ctx);
-	assert(result == 0);
+	if(result != 0) {
+		throw USBException("Failed to initialize libUSB", result);
+	}
 }
 
 UsbRfDriver::~UsbRfDriver() {
