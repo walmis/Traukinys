@@ -13,51 +13,6 @@
 #include "UsbRfDriver.hpp"
 #include "PyInterface.hpp"
 
-UsbRfDriver driver;
-
-TinyRadioProtocol<typeof(driver), AES_CCM_32> radio(driver);
-
-void handleFrame() {
-	XPCC_LOG_DEBUG .printf("handle frame\n");
-
-	StaticFrame frm;
-
-	driver.readFrame(frm);
-
-	XPCC_LOG_DEBUG .printf("Frame rssi:%d lqi:%d len:%d\n", frm.rssi, frm.lqi, frm.data_len);
-	XPCC_LOG_DEBUG .dump_buffer(frm.data, frm.data_len);
-}
-
-int main() {
-	driver.initUSB();
-
-	driver.init(); //initialize radio
-	driver.setRxFrameHandler(handleFrame);
-
-
-	driver.setPanId(0x1234);
-	driver.setShortAddress(23000);
-	driver.rxOn();
-
-	StaticFrame frm;
-	MacFrame m(frm);
-
-	m.build();
-	m.ackRequired(true);
-	m.setDstAddress(0xFFFD, 0x1234);
-	m.setSrcAddress(0x5454);
-
-	XPCC_LOG_DEBUG .dump_buffer(frm.data, frm.data_len);
-
-	XPCC_LOG_DEBUG .printf("%d\n", driver.getShortAddress());
-
-	XPCC_LOG_DEBUG .printf("Send result:%d\n", driver.sendFrame(frm));
-
-	while(1) {
-		sleep(1);
-	}
-
-}
 
 
 
