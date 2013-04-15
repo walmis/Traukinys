@@ -111,6 +111,8 @@ inline void gpio_init() {
 	LPC_IOCON->PIO0_4 |= 1<<8;
 	LPC_IOCON->PIO0_5 |= 1<<8;
 
+	startStop::setInput();
+
 	led::setOutput(0);
 }
 

@@ -31,7 +31,6 @@
 								<option id="gnu.cpp.compiler.exe.release.option.debugging.level.937000379" name="Debug Level" superClass="gnu.cpp.compiler.exe.release.option.debugging.level" value="gnu.cpp.compiler.debugging.level.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1797364301" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc}&quot;"/>
-									<listOptionValue builtIn="false" value="/usr/include/x86_64-linux-gnu/python2.7"/>
 									<listOptionValue builtIn="false" value="/usr/include/libusb-1.0"/>
 									<listOptionValue builtIn="false" value="/usr/include/python2.7"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc/src}&quot;"/>
@@ -45,7 +44,6 @@
 								<option id="gnu.c.compiler.exe.release.option.debugging.level.956458329" name="Debug Level" superClass="gnu.c.compiler.exe.release.option.debugging.level" value="gnu.c.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.1919053929" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc}&quot;"/>
-									<listOptionValue builtIn="false" value="/usr/include/x86_64-linux-gnu/python2.7"/>
 									<listOptionValue builtIn="false" value="/usr/include/libusb-1.0"/>
 									<listOptionValue builtIn="false" value="/usr/include/python2.7"/>
 								</option>
@@ -86,7 +84,6 @@
 					<externalSetting contentTypes="org.eclipse.cdt.core.cSource:org.eclipse.cdt.core.cxxSource">
 						<entry flags="BUILTIN" kind="includePath" name="/usr/include/libusb-1.0"/>
 						<entry flags="BUILTIN" kind="includePath" name="/usr/include/python2.7"/>
-						<entry flags="BUILTIN" kind="includePath" name="/usr/include/x86_64-linux-gnu/python2.7"/>
 					</externalSetting>
 					<externalSetting contentTypes="org.eclipse.cdt.managedbuilder.core.compiledObjectFile">
 						<entry flags="UNDEFINED" kind="libraryFile" name="usb-1.0" srcPrefixMapping="" srcRootPath=""/>

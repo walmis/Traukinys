@@ -89,8 +89,16 @@ MotorControl motorControl;
 rf230::Driver<lpc::SpiMaster0, rfReset, rfSel, rfSlpTr, rfIrq> at_radio;
 class TrainRadio : public TinyRadioProtocol<typeof(at_radio), AES_CCM_32> {
 public:
+	uint8_t train_id[8];
+
 	TrainRadio() : TinyRadioProtocol(at_radio),	speedReport(250)
 	{
+		uint32_t a[5];
+		lpc11::Core::getUniqueId(a);
+		a[1] = a[1] ^ a[2];
+		a[3] = a[3] ^ a[4];
+		//memcpy(train_id, (uint8_t*)(a[1]), sizeof(uint32_t));
+		//memcpy(train_id+4, (uint8_t*)(a[3]), sizeof(uint32_t));
 	}
 
 	bool frameHandler(Frame &rxFrame) {
@@ -100,7 +108,7 @@ public:
 
 	void prepareBeacon(BeaconFrame &beacon) override {
 		strcpy(beacon.name, "Traukinys");
-		strcpy(beacon.data, "0");
+		memcpy(beacon.data, train_id, 8);
 	}
 
 	void handleTick() override {
@@ -134,7 +142,7 @@ public:
 			disassociate(address, true);
 			return;
 		}
-		XPCC_LOG_DEBUG .printf("Request %d\n", request_type);
+		//XPCC_LOG_DEBUG .printf("Request %d\n", request_type);
 
 		bool res = true;
 		switch(request_type) {
@@ -232,6 +240,22 @@ class Terminal : xpcc::TickerTask {
 
 Terminal terminal;
 
+uint16_t getAddress() {
+	uint32_t a[5];
+	lpc11::Core::getUniqueId(a);
+
+	XPCC_LOG_DEBUG .printf("Device id %x %x %x %x\n", a[1], a[2], a[3], a[4]);
+
+
+	uint16_t *ptr = (uint16_t*)a;
+	uint16_t res = 0;
+	for(int i = 0; i < sizeof(uint32_t)*5/2; i++) {
+		res ^= ptr[i];
+	}
+	XPCC_LOG_DEBUG .printf("Address: %02x\n", res);
+	return res;
+}
+
 int main() {
 	gpio_init();
 
@@ -244,13 +268,14 @@ int main() {
 	lpc::SpiMaster0::initialize(lpc::SpiMaster0::Mode::MODE_0,
 			lpc::SpiMaster0::Presacler::DIV002, 3);
 
-
 	motorControl.init();
 
 	led::set(1);
 
+	XPCC_LOG_DEBUG .printf("Starting\n");
+
 	radio.init();
-	radio.setAddress(0x8980);
+	radio.setAddress(getAddress());
 	radio.setPanId(0x1234);
 
 	at_radio.rxOn();
