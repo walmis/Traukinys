@@ -76,6 +76,7 @@ RFID::RFID(xpcc::IODevice &dev)
 	    return status;
 
  }
+ extern xpcc::log::Logger stdout;
  bool RFID::readCardSerial(){
 	unsigned char status;
 	unsigned char str[MAX_LEN];
@@ -87,6 +88,23 @@ RFID::RFID(xpcc::IODevice &dev)
 
 
 	status = read(0, str);
+	uint8_t csum = 0x88; //CT byte according to datasheet
+	int i;
+	for(i=0;i<3;i++){
+		csum ^= str[i];
+	}
+	if(csum != str[3])
+		return false;
+
+	csum = 0;
+	for(i=4;i<8;i++) {
+		csum ^= str[i];
+	}
+	if(str[8] != csum)
+		return false;
+
+	//stdout.dump_buffer(str, 16);
+
 	//XPCC_LOG_DEBUG .printf("read status %d\n", status);
 	//XPCC_LOG_DEBUG .dump_buffer(str, 16);
 	memcpy(serNum, str, 7);

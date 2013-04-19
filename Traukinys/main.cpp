@@ -1,3 +1,4 @@
+
 #include <LPC11xx.h>
 
 #include <xpcc/architecture.hpp>
@@ -5,19 +6,27 @@
 #include <xpcc/debug.hpp>
 //#include <xpcc/platform>
 #include <xpcc/driver/connectivity/wireless/at86rf230.hpp>
+
+#define NODE_TIMEOUT 3500 //3.5s
 #include <xpcc/communication/TinyRadioProtocol.hpp>
 
 #include "pindefs.hpp"
 #include "utils.hpp"
 #include "motor_control.hpp"
+#include "rfid.hpp"
 
 using namespace xpcc;
 
 lpc::Uart1 uart(57600);
-static xpcc::IODeviceWrapper<lpc::Uart1> device;
+xpcc::IODeviceWrapper<lpc::Uart1> device;
 
-xpcc::IOStream stdout(device);
-xpcc::log::Logger xpcc::log::debug(device);
+
+
+//NullIODevice null;
+//xpcc::log::Logger xpcc::log::debug(null);
+
+
+RFID rfid(device);
 
 extern "C" void fault_handler() {
 	XPCC_LOG_DEBUG .printf("Fault occurred\n");
@@ -39,66 +48,30 @@ enum TrainCommands {
 	GPIO_READ,
 	GPIO_SET,
 
-	SPEED_REPORT
+	SPEED_REPORT, //data frame
+	RFID_READ, //data frame
+	DEBUG_MSG //data frame
 };
 
 
-
-void systick_handler() {
-
-	if(!progPin::read()) {
-		NVIC_SystemReset();
-	}
-
-}
-
-
-
-static xpcc::PeriodicTimer<> tm(100);
-void idleTask(){
-	if(tm.isExpired()) {
-		//XPCC_LOG_DEBUG .printf("idle\n");
-
-		//MotorControl::setSpeed(speed);
-
-		//speed ++;
-		//speed %= 100;
-
-	}
-}
-
-int to_int(char *p) {
-	int k = 0;
-	bool neg = false;
-	if(*p == '-') {
-		p++;
-		neg = true;
-	}
-
-	while (*p) {
-		k = (k << 3) + (k << 1) + (*p) - '0';
-		p++;
-	}
-	if(neg) return -k;
-	return k;
-}
 
 MotorControl motorControl;
 
 
 rf230::Driver<lpc::SpiMaster0, rfReset, rfSel, rfSlpTr, rfIrq> at_radio;
-class TrainRadio : public TinyRadioProtocol<typeof(at_radio), AES_CCM_32> {
+class TrainRadio : public TinyRadioProtocol<typeof(at_radio), AES_CCM_32>,
+		public xpcc::IODevice {
 public:
 	uint8_t train_id[8];
 
-	TrainRadio() : TinyRadioProtocol(at_radio),	speedReport(250)
+	TrainRadio() : TinyRadioProtocol(at_radio),	speedReport(250), tm(64)
 	{
 		uint32_t a[5];
 		lpc11::Core::getUniqueId(a);
 		a[1] = a[1] ^ a[2];
 		a[3] = a[3] ^ a[4];
-		//memcpy(train_id, (uint8_t*)(a[1]), sizeof(uint32_t));
-		//memcpy(train_id+4, (uint8_t*)(a[3]), sizeof(uint32_t));
+		memcpy(train_id, &a[1], sizeof(uint32_t));
+		memcpy(train_id+4, &a[3], sizeof(uint32_t));
 	}
 
 	bool frameHandler(Frame &rxFrame) {
@@ -119,6 +92,16 @@ public:
 				blinker.blink(50);
 				send(node->address, (uint8_t*)&speed, sizeof(speed), SPEED_REPORT);
 			}
+		}
+		if(tm.isExpired() && buffer_pos != 0) {
+
+			if(connectedNodes.getSize() != 0) {
+				for(auto node : connectedNodes) {
+					send(node->address, tx_buffer, buffer_pos, DEBUG_MSG);
+				}
+				buffer_pos = 0;
+			}
+			tm.restart(64);
 		}
 
 		TinyRadioProtocol<typeof(at_radio), AES_CCM_32>::handleTick();
@@ -181,70 +164,50 @@ public:
 		}
 
 	}
+
+	void write(char c) override {
+		if(buffer_pos == 100) return;
+
+		tx_buffer[buffer_pos++] = c;
+		if(buffer_pos == 100) {
+			if(connectedNodes.getSize() != 0) {
+				for(auto node : connectedNodes) {
+					send(node->address, tx_buffer, 100, DEBUG_MSG);
+				}
+				buffer_pos = 0;
+				tm.restart(64);
+			}
+		}
+	}
+
+	bool read(char& c) override {
+		return false;
+	}
+
+	void flush() override {
+
+	}
+
 private:
 	xpcc::PeriodicTimer<> speedReport;
 	Blinker<xpcc::gpio::Invert<led>> blinker;
+
+	xpcc::Timeout<> tm;
+	uint8_t tx_buffer[100];
+	uint8_t buffer_pos = 0;
 };
 
 TrainRadio radio;
-
-class Terminal : xpcc::TickerTask {
-	char buffer[32];
-	uint8_t pos = 0;
-	void handleTick() override {
-
-		if(device.read(buffer[pos])) {
-			if(buffer[pos] == '\n') {
-				//remove the newline character
-				buffer[pos] = 0;
-				handleCommand();
-				pos = 0;
-				return;
-			}
-			pos++;
-			pos &= 31;
-		}
-	}
-	void handleCommand() {
-		stdout.printf(": %s\n", buffer);
-		if(strcmp(buffer, "start") == 0) {
-			stdout.printf("starting motor\n");
-			motorControl.run();
-		} else
-		if(strcmp(buffer, "reset") == 0) {
-			stdout.printf("resetting\n");
-			NVIC_SystemReset();
-		} else
-		if(strcmp(buffer, "stop") == 0) {
-			motorControl.stop();
-		} else
-		if(strcmp(buffer, "brake") == 0) {
-			motorControl.brake();
-		} else
-		if(strncmp(buffer, "speed", 5) == 0) {
-			int speed = to_int(&buffer[6]);
-			stdout.printf("new speed %d\n", speed);
-			motorControl.setSpeed(speed);
-		} else
-		if(strcmp(buffer, "reverse") == 0) {
-			motorControl.setDirection(true);
-		} else
-		if(strcmp(buffer, "forward") == 0) {
-			motorControl.setDirection(false);
-		}
+xpcc::log::Logger stdout(radio);
 
 
-	}
-};
-
-
-Terminal terminal;
+//Terminal terminal;
 
 uint16_t getAddress() {
 	uint32_t a[5];
 	lpc11::Core::getUniqueId(a);
 
-	XPCC_LOG_DEBUG .printf("Device id %x %x %x %x\n", a[1], a[2], a[3], a[4]);
+	stdout .printf("Device id %x %x %x %x\n", a[1], a[2], a[3], a[4]);
 
 
 	uint16_t *ptr = (uint16_t*)a;
@@ -252,9 +215,62 @@ uint16_t getAddress() {
 	for(int i = 0; i < sizeof(uint32_t)*5/2; i++) {
 		res ^= ptr[i];
 	}
-	XPCC_LOG_DEBUG .printf("Address: %02x\n", res);
+	stdout .printf("Address: %02x\n", res);
 	return res;
 }
+
+bool rfid_init() {
+	//reset rfid module
+	progPin::setOutput(0);
+	__WFI(); //sleep until interrupt, ~1ms
+	progPin::setInput(xpcc::lpc::InputType::PULLUP);
+	__WFI();
+
+	uart.setBaudrate(9600);
+	if(!rfid.init()) {
+		return false;
+	}
+	rfid.setBaudRate(BAUD_921600);
+	uart.setBaudrate(921600);
+
+	return true;
+}
+
+
+void idleTask(){
+	static xpcc::PeriodicTimer<> tm(1000);
+	static xpcc::PeriodicTimer<> rfid_tm(10);
+
+	if(!progPin::read()) {
+		NVIC_SystemReset();
+	}
+
+	if(!rfid.isConnected() && tm.isExpired()) {
+		stdout.printf("Connecting RFID\n");
+		if(!rfid_init()) {
+			stdout.printf("Failed to initialize RFID\n");
+		}
+	}
+
+	if(rfid.isConnected() && rfid_tm.isExpired() && rfid.isCard()) {
+
+		stdout.printf("RFID: Card Detected\n");
+
+		if(rfid.readCardSerial()) {
+
+			for(auto node : radio.connectedNodes) {
+				radio.send(node->address, rfid.serNum, 7, RFID_READ);
+			}
+
+			rfid.halt();
+		} else {
+			stdout.printf("RFID: failed to read serial\n");
+		}
+	}
+
+}
+
+
 
 int main() {
 	gpio_init();
@@ -262,7 +278,6 @@ int main() {
 	xpcc::Random::seed();
 
 	lpc11::SysTickTimer::enable();
-	lpc11::SysTickTimer::attachInterrupt(systick_handler);
 
 	lpc::SpiMaster0::configurePins(lpc::SpiMaster0::MappingSck::SWCLK_PIO0_10, false);
 	lpc::SpiMaster0::initialize(lpc::SpiMaster0::Mode::MODE_0,
@@ -272,13 +287,16 @@ int main() {
 
 	led::set(1);
 
-	XPCC_LOG_DEBUG .printf("Starting\n");
+	stdout.printf("Starting:\n");
+	stdout.printf("Core Freq: %d\n", SystemCoreClock);
 
 	radio.init();
 	radio.setAddress(getAddress());
 	radio.setPanId(0x1234);
 
 	at_radio.rxOn();
+
+	//rfid_init();
 
 	TickerTask::tasksRun(idleTask);
 }

@@ -44,6 +44,8 @@ class Train(WirelessDevice):
 		GPIO_SET=22
 
 		SPEED_REPORT=23
+		RFID_READ = 24
+		DEBUG_MSG = 25
 	
 	def __init__(self, address):
 		WirelessDevice.__init__(self, address)
@@ -69,6 +71,12 @@ class Train(WirelessDevice):
 		
 		if header.req_id == Train.Cmd.SPEED_REPORT:
 			print self.address, struct.unpack("I", data)[0]
+			
+		elif header.req_id == Train.Cmd.DEBUG_MSG:
+			print "\033[1;31m", data, "\033[1;m",
+			
+		elif header.req_id == Train.Cmd.RFID_READ:
+			print "Read rfid:", data.encode("hex")
 	
 	def onBeacon(self, data):
 		print "train beacon"

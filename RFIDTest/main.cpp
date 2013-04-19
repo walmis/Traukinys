@@ -7,6 +7,7 @@
 #include <lpc17xx_nvic.h>
 #include <lpc17xx_uart.h>
 #include <lpc17xx_pinsel.h>
+#include <lpc17xx_clkpwr.h>
 
 #include <xpcc/architecture.hpp>
 #include <xpcc/workflow.hpp>
@@ -25,14 +26,18 @@ class UARTDevice : public IODevice {
 
 public:
 	UARTDevice(int baud) {
+		setBaud(baud);
+	}
+
+	void setBaud(uint32_t baud) {
+
+		CLKPWR_SetPCLKDiv(CLKPWR_PCLKSEL_UART0, CLKPWR_PCLKSEL_CCLK_DIV_1);
 
 		UART_CFG_Type cfg;
 		UART_FIFO_CFG_Type fifo_cfg;
 
 		UART_ConfigStructInit(&cfg);
 		cfg.Baud_rate = baud;
-
-		UART_Init(LPC_UART0, &cfg);
 
 		PINSEL_CFG_Type PinCfg;
 
@@ -52,7 +57,6 @@ public:
 		UART_FIFOConfig(LPC_UART0, &fifo_cfg);
 
 		UART_TxCmd(LPC_UART0, ENABLE);
-
 	}
 
 	void
@@ -173,12 +177,35 @@ void sysTick() {
 
 RFID rfid(uart);
 
-xpcc::PeriodicTimer<> t(1000);
+xpcc::PeriodicTimer<> t(20);
 void idle() {
 	if(t.isExpired()) {
-		if(rfid.isCard()) {
-			//XPCC_LOG_DEBUG .printf("aa %d\n", rfid.readCardSerial());
-			XPCC_LOG_DEBUG .printf("card found\n");
+		//XPCC_LOG_DEBUG .printf("p\n");
+		if(!rfid.isConnected()) {
+
+			uart.setBaud(460800);
+
+			if(!rfid.init()) {
+				XPCC_LOG_DEBUG .printf("init at 4860800 baud failed\n");
+				uart.setBaud(9600);
+				if(!rfid.init()) {
+					XPCC_LOG_DEBUG .printf("init at 9600 failed\n");
+				} else {
+					rfid.setBaudRate(BAUD_460800);
+					uart.setBaud(460800);
+				}
+			}
+
+		} else {
+
+			if(rfid.isCard()) {
+				XPCC_LOG_DEBUG .printf("card found %d\n", __get_IPSR());
+
+				XPCC_LOG_DEBUG .printf("read %d\n", rfid.readCardSerial());
+				XPCC_LOG_DEBUG .dump_buffer(rfid.serNum, 7);
+
+				rfid.halt();
+			}
 		}
 
 
@@ -198,8 +225,6 @@ int main() {
 	lpc::SpiMaster1::initialize(lpc::SpiMaster1::Mode::MODE_0,
 			lpc::SpiMaster1::Prescaler::DIV002, 4);
 
-
-
 	xpcc::PeriodicTimer<> t(500);
 
 	usbConnPin::setOutput(true);
@@ -209,7 +234,8 @@ int main() {
 
 	NVIC_SetPriority(USB_IRQn, 5);
 
-	rfid.init();
+
+
 
 	TickerTask::tasksRun(idle);
 

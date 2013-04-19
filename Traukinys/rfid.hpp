@@ -6,6 +6,8 @@
 #define RFID_h
 
 #include <xpcc/architecture.hpp>
+#include <xpcc/workflow.hpp>
+#include <xpcc/debug.hpp>
 
 /******************************************************************************
  * Definitions
