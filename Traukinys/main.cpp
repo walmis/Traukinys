@@ -255,16 +255,17 @@ void idleTask(){
 	if(rfid.isConnected() && rfid_tm.isExpired() && rfid.isCard()) {
 
 		stdout.printf("RFID: Card Detected\n");
+		for(int i = 0; i < 3; i++) {
+			if(rfid.readCardSerial()) {
 
-		if(rfid.readCardSerial()) {
+				for(auto node : radio.connectedNodes) {
+					radio.send(node->address, rfid.serNum, 7, RFID_READ);
+				}
 
-			for(auto node : radio.connectedNodes) {
-				radio.send(node->address, rfid.serNum, 7, RFID_READ);
+				rfid.halt();
+				stdout.printf("RFID: successfully read\n");
+				break;
 			}
-
-			rfid.halt();
-		} else {
-			stdout.printf("RFID: failed to read serial\n");
 		}
 	}
 
