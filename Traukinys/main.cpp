@@ -64,7 +64,10 @@ class TrainRadio : public TinyRadioProtocol<typeof(at_radio), AES_CCM_32>,
 public:
 	uint8_t train_id[8];
 
-	TrainRadio() : TinyRadioProtocol(at_radio),	speedReport(250), tm(64)
+	TrainRadio() :
+	  TinyRadioProtocol(at_radio), 
+	  speedReport(250), 
+	  tm(64)
 	{
 		uint32_t a[5];
 		lpc11::Core::getUniqueId(a);
@@ -268,6 +271,9 @@ void idleTask(){
 			}
 		}
 	}
+	
+	//put processor to sleep until next interrupt
+	__WFI();
 
 }
 
@@ -297,7 +303,7 @@ int main() {
 
 	at_radio.rxOn();
 
-	//rfid_init();
+	rfid_init();
 
 	TickerTask::tasksRun(idleTask);
 }
