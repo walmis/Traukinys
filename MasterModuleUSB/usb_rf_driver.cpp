@@ -125,19 +125,22 @@ uint8_t* USBInterface::configurationDesc() {
 }
 
 void USBInterface::handleTick() {
-	if (rx_frame.rx_flag) {
+
+	if(!rxFrames.isEmpty()) {
+		const Frame &fr = rxFrames.get();
+
 		blinker.blink(50);
 
 		RfFrameData usb_rx_frame;
-		usb_rx_frame.lqi = rx_frame.lqi;
-		usb_rx_frame.rssi = rx_frame.rssi;
-		usb_rx_frame.data_len = rx_frame.data_len;
+		usb_rx_frame.lqi = fr.lqi;
+		usb_rx_frame.rssi = fr.rssi;
+		usb_rx_frame.data_len = fr.data_len;
 
-		memcpy(usb_rx_frame.frame_data, rx_frame.data, rx_frame.data_len);
+		memcpy(usb_rx_frame.frame_data, fr.data, fr.data_len);
 
 		uint8_t* data = (uint8_t*) &usb_rx_frame;
 		uint8_t left = sizeof(usb_rx_frame.data_len) + sizeof(usb_rx_frame.lqi)
-				+ sizeof(usb_rx_frame.rssi) + rx_frame.data_len;
+				+ sizeof(usb_rx_frame.rssi) + fr.data_len;
 
 		XPCC_LOG_DEBUG.printf("write rx frame [%d]...", left);
 		while (left > 0) {
@@ -148,8 +151,9 @@ void USBInterface::handleTick() {
 		}
 		XPCC_LOG_DEBUG.printf("OK\n");
 
-		rx_frame.rx_flag = 0;
+		rxFrames.pop();
 	}
+
 }
 
 bool USBInterface::USBCallback_setConfiguration(uint8_t configuration) {
@@ -168,11 +172,13 @@ bool USBInterface::USBCallback_setConfiguration(uint8_t configuration) {
 }
 
 void USBInterface::rxFrameHandler() {
-	XPCC_LOG_DEBUG.printf("rx frame\n");
-	if (!self->rx_frame.rx_flag)
-		rf230drvr.readFrame(self->rx_frame);
-	else
-	XPCC_LOG_DEBUG.printf("RX FRAME OVERRUN\n");
+	HeapFrame frame;
+	if(frame.allocate(rf230drvr.getFrameLength())) {
+		rf230drvr.readFrame(frame);
+
+		self->rxFrames.push(frame);
+	}
+
 }
 
 bool USBInterface::EP1_IN_callback()

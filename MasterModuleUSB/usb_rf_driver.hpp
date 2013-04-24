@@ -59,7 +59,7 @@ private:
 	uint8_t buffer[64];
 	uint8_t frame_data[128];
 
-	StaticFrame rx_frame;
+	xpcc::atomic::Queue<HeapFrame, 10> rxFrames;
 
 	uint8_t data_pos;
 
