@@ -31,7 +31,7 @@ public:
 	}
 
 	static void rxHandler() {
-		XPCC_LOG_DEBUG .printf("rx handler\n");
+		//XPCC_LOG_DEBUG .printf("rx handler\n");
 		self->rxHandler();
 
 		sem_post(&(static_cast<Radio*>(self)->sem));
@@ -57,10 +57,6 @@ public:
 		self->handleTick();
 	}
 
-	void test(std::string test) {
-		XPCC_LOG_DEBUG .printf("test\n");
-	}
-
 	bool sendRequest(uint16_t address, uint8_t req, std::string data, uint8_t flags) {
 		return Base::sendRequest(address, req, (uint8_t*)data.c_str(), data.length(), flags);
 
@@ -74,7 +70,6 @@ protected:
 	UsbRfDriver driver;
 	sem_t sem;
 };
-
 
 
 class RadioWrapper : public Radio, public wrapper<Radio> {
@@ -198,7 +193,9 @@ BOOST_PYTHON_MODULE(usbradio)
 {
 	register_exception_translator<USBException>(translator);
 
-	class_<Frame>("Frame");
+	class_<Frame>("Frame")
+		.def_readonly("rssi", &Frame::rssi)
+		.def_readonly("lqi", &Frame::lqi);
 
 	enum_<MacFrame::FcfFrameType>("FcfFrameType")
 		.value("BEACON", MacFrame::FcfFrameType::BEACON)
@@ -297,9 +294,7 @@ BOOST_PYTHON_MODULE(usbradio)
 
 			.def("poll", &Radio::poll)
 
-			.def("getDriver", &Radio::getDriver, return_value_policy<reference_existing_object>())
-
-			.def("test", &Radio::test);
+			.def("getDriver", &Radio::getDriver, return_value_policy<reference_existing_object>());
 };
 
 

@@ -38,7 +38,7 @@ public:
 
 	template <typename retType>
 	void funcReturn(retType arg) {
-		XPCC_LOG_DEBUG .printf("write %d\n", sizeof(retType));
+		XPCC_LOG_DEBUG .printf("funcReturn: write len:%d\n", sizeof(retType));
 
 		writeNB(EPINT_IN, (uint8_t*)&arg, sizeof(retType), MAX_PACKET_SIZE_EPINT);
 
@@ -59,7 +59,7 @@ private:
 	uint8_t buffer[64];
 	uint8_t frame_data[128];
 
-	xpcc::atomic::Queue<HeapFrame, 10> rxFrames;
+	xpcc::atomic::Queue<HeapFrame*, 5> rxFrames;
 
 	uint8_t data_pos;
 

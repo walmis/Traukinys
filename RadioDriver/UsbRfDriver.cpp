@@ -72,6 +72,8 @@ void UsbRfDriver::connect() {
 		}
 		connected = true;
 
+
+
 		XPCC_LOG_INFO.printf("USB: Device successfully initialized\n");
 
 		std::thread th(&UsbRfDriver::frameDispatcher, this);
@@ -143,8 +145,15 @@ void UsbRfDriver::txRx() {
 	RfFrameData data;
 
 	XPCC_LOG_INFO .printf("start read thread\n");
+	int res, read;
+
+	do {
+		//XPCC_LOG_DEBUG .printf("dump\n");
+		res = libusb_bulk_transfer(device, inBulk, (uint8_t*)&data, sizeof(RfFrameData), &read, 10);
+	} while(res == 0);
+
 	while(connected && device) {
-		int res, read;
+
 
 		res = libusb_bulk_transfer(device, inBulk, (uint8_t*)&data, sizeof(RfFrameData), &read, 0);
 		if(res == 0) {

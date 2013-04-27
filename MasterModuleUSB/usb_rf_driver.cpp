@@ -127,31 +127,35 @@ uint8_t* USBInterface::configurationDesc() {
 void USBInterface::handleTick() {
 
 	if(!rxFrames.isEmpty()) {
-		const Frame &fr = rxFrames.get();
+		Frame *fr = rxFrames.get();
+		rxFrames.pop();
 
 		blinker.blink(50);
 
-		RfFrameData usb_rx_frame;
-		usb_rx_frame.lqi = fr.lqi;
-		usb_rx_frame.rssi = fr.rssi;
-		usb_rx_frame.data_len = fr.data_len;
+		static RfFrameData usb_rx_frame;
 
-		memcpy(usb_rx_frame.frame_data, fr.data, fr.data_len);
+		usb_rx_frame.lqi = fr->lqi;
+		usb_rx_frame.rssi = fr->rssi;
+		usb_rx_frame.data_len = fr->data_len;
+
+		memcpy(usb_rx_frame.frame_data, fr->data, fr->data_len);
 
 		uint8_t* data = (uint8_t*) &usb_rx_frame;
 		uint8_t left = sizeof(usb_rx_frame.data_len) + sizeof(usb_rx_frame.lqi)
-				+ sizeof(usb_rx_frame.rssi) + fr.data_len;
+				+ sizeof(usb_rx_frame.rssi) + fr->data_len;
 
 		XPCC_LOG_DEBUG.printf("write rx frame [%d]...", left);
+		uint8_t res;
 		while (left > 0) {
 			uint8_t len = (left > 64) ? 64 : left;
-			write(EPBULK_IN, data, len, 64);
+			res = write(EPBULK_IN, data, len, 64, 0);
 			left -= len;
 			data += len;
 		}
 		XPCC_LOG_DEBUG.printf("OK\n");
 
-		rxFrames.pop();
+		delete fr;
+
 	}
 
 }
@@ -160,6 +164,7 @@ bool USBInterface::USBCallback_setConfiguration(uint8_t configuration) {
 	if (configuration != 1) {
 		return false;
 	}
+
 	addEndpoint(EPBULK_OUT, MAX_PACKET_SIZE_EPBULK);
 	addEndpoint(EPBULK_IN, MAX_PACKET_SIZE_EPBULK);
 	addEndpoint(EPINT_OUT, MAX_PACKET_SIZE_EPINT);
@@ -172,28 +177,35 @@ bool USBInterface::USBCallback_setConfiguration(uint8_t configuration) {
 }
 
 void USBInterface::rxFrameHandler() {
-	HeapFrame frame;
-	if(frame.allocate(rf230drvr.getFrameLength())) {
-		rf230drvr.readFrame(frame);
+	//XPCC_LOG_DEBUG.printf("*%d\n", self->rxFrames.stored());
+	if(!self->rxFrames.isFull()) {
+		HeapFrame *frame = new HeapFrame;
+		//XPCC_LOG_DEBUG .printf("fr %x\n", frame);
+		if(frame && frame->allocate(rf230drvr.getFrameLength())) {
+			rf230drvr.readFrame(*frame);
 
-		self->rxFrames.push(frame);
+			self->rxFrames.push(frame);
+		} else {
+			//XPCC_LOG_DEBUG .printf("alloc failed\n");
+			if(frame)
+				delete frame;
+		}
 	}
-
 }
 
 bool USBInterface::EP1_IN_callback()
 {
-	XPCC_LOG_DEBUG .printf("IN callback\n");
+	//XPCC_LOG_DEBUG .printf("EP1 IN callback\n");
 	return true;
 }
 
 bool USBInterface::EP1_OUT_callback() {
-	XPCC_LOG_DEBUG.printf("OUT1\n");
 	uint8_t buf[64];
 	uint32_t size;
 	readEP(EPINT_OUT, buf, &size, 64);
 	funcCallPkt<>* pkt = (funcCallPkt<>*) (buf);
-	XPCC_LOG_DEBUG.printf("func %d\n", pkt->function_id);
+	XPCC_LOG_DEBUG.printf("Call func id:%d\n", pkt->function_id);
+
 	switch (pkt->function_id) {
 	case SET_CHANNEL: {
 		auto *p = (funcCallPkt<SET_CHANNEL, uint8_t>*) buf;
@@ -213,7 +225,6 @@ bool USBInterface::EP1_OUT_callback() {
 		break;
 	case SET_SHORT_ADDRESS: {
 		auto *p = (funcCallPkt<SET_SHORT_ADDRESS, uint16_t>*) buf;
-		XPCC_LOG_DEBUG.printf("set short address %d\n", p->arg0);
 		rf230drvr.setShortAddress(p->arg0);
 
 		break;
@@ -224,7 +235,6 @@ bool USBInterface::EP1_OUT_callback() {
 
 	case SET_PAN_ID: {
 		auto *p = (funcCallPkt<SET_PAN_ID, uint16_t>*) buf;
-		XPCC_LOG_DEBUG.printf("set pan id %d\n", p->arg0);
 		rf230drvr.setPanId(p->arg0);
 
 		break;
@@ -252,7 +262,7 @@ bool USBInterface::EP1_OUT_callback() {
 		frm.data = frame_data;
 		frm.data_len = data_pos;
 
-		XPCC_LOG_DEBUG.printf("send %d\n", frm.data_len);
+		XPCC_LOG_DEBUG.printf("send frame len:%d\n", frm.data_len);
 		funcReturn<RadioStatus>(rf230drvr.sendFrame(frm, true));
 
 		data_pos = 0;
@@ -272,7 +282,7 @@ bool USBInterface::EP2_OUT_callback() {
 		uint32_t read;
 		readEP(EPBULK_OUT, frame_data + data_pos, &read, 128 - data_pos);
 		data_pos += read;
-		XPCC_LOG_DEBUG.printf("Read %d\n", read);
+		//XPCC_LOG_DEBUG.printf("EP2_OUT_callback(): Read packet len:%d\n", read);
 	}
 	return true;
 }
