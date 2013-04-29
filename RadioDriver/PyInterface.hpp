@@ -11,7 +11,10 @@
 #include <boost/python.hpp>
 
 #include "UsbRfDriver.hpp"
+
+#define XPCC_LOG_LEVEL xpcc::log::DEBUG
 #include <xpcc/communication/TinyRadioProtocol.hpp>
+
 #include <xpcc/driver/connectivity/wireless/mac802.15.4/mac.hpp>
 #include <xpcc/container.hpp>
 

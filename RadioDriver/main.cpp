@@ -8,7 +8,6 @@
 
 #include <xpcc/architecture.hpp>
 #include <xpcc/workflow.hpp>
-#include <xpcc/communication/TinyRadioProtocol.hpp>
 
 #include "UsbRfDriver.hpp"
 #include "PyInterface.hpp"

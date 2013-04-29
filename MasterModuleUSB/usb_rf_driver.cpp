@@ -278,11 +278,17 @@ bool USBInterface::EP1_OUT_callback() {
 
 bool USBInterface::EP2_OUT_callback() {
 	XPCC_LOG_DEBUG.printf("OUT2\n");
+	uint32_t read;
 	if (data_pos < 128) {
-		uint32_t read;
+
 		readEP(EPBULK_OUT, frame_data + data_pos, &read, 128 - data_pos);
 		data_pos += read;
-		//XPCC_LOG_DEBUG.printf("EP2_OUT_callback(): Read packet len:%d\n", read);
+		XPCC_LOG_DEBUG.printf("EP2_OUT_callback(): Read packet len:%d\n", read);
+	} else {
+		XPCC_LOG_DEBUG.printf("EP2_OUT_callback(): Drop data len:%d\n", read);
+		uint8_t data[64];
+
+		readEP(EPBULK_OUT, data, &read, 64);
 	}
 	return true;
 }
