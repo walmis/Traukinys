@@ -224,7 +224,7 @@ class App(QApplication):
 		self.train_red = TrainUI("e73e4443ca6be3b8");
 		self.train_red.dGreitis.setStyleSheet("background: rgba(255, 0, 0, 128)")
 
-		self.train_green = TrainUI("");
+		self.train_green = TrainUI("dc0844430470e3b8");
 		self.train_green.dGreitis.setStyleSheet("background: rgba(0, 255, 0, 128)")
 		
 		self.trains.append(self.train_blue)

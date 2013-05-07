@@ -32,7 +32,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/}&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.848328154" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" valueType="definedSymbols">
-									<listOptionValue builtIn="false" value="__ARM_LPC11XX__"/>
+									<listOptionValue builtIn="false" value="__ARM_LPC11UXX__"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.undef.symbol.492587369" name="Undefined symbols (-U)" superClass="gnu.c.compiler.option.preprocessor.undef.symbol" valueType="undefDefinedSymbols">
 									<listOptionValue builtIn="false" value="__ARM_ARCH_4T__"/>
@@ -44,6 +44,7 @@
 								<option id="gnu.cpp.compiler.option.debugging.level.198500155" name="Debug Level" superClass="gnu.cpp.compiler.option.debugging.level" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.other.other.359987823" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -mthumb -ffunction-sections -fdata-sections  -mcpu=cortex-m0 -fno-rtti -fno-exceptions -std=gnu++0x" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1280403109" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc/ext}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc/ext/lpc11xx/cmsis}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/lpc11xx}&quot;"/>
@@ -51,7 +52,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.84702961" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
-									<listOptionValue builtIn="false" value="__ARM_LPC11XX__"/>
+									<listOptionValue builtIn="false" value="__ARM_LPC11UXX__"/>
 									<listOptionValue builtIn="false" value="XPCC_LOG_LEVEL=xpcc::log::DISABLED"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.preprocessor.undef.1729886582" name="Undefined symbols (-U)" superClass="gnu.cpp.compiler.option.preprocessor.undef" valueType="undefDefinedSymbols">
@@ -75,7 +76,7 @@
 									<listOptionValue builtIn="false" value="c"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1025141914" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc/LPC11xx}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc/LPC11Uxx}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.817938332" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
@@ -98,10 +99,10 @@
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings">
-				<externalSettings containerId="xpcc;cdt.managedbuild.config.gnu.cross.exe.release.735040115" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+				<externalSettings containerId="xpcc;cdt.managedbuild.config.gnu.cross.exe.release.735040115.1333579402" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/xpcc"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/xpcc/LPC11xx"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/xpcc/LPC11Uxx"/>
 						<entry flags="RESOLVED" kind="libraryFile" name="xpcc" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
@@ -127,7 +128,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.1754687782" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.248926956" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path" value="/${HOME}/arm-none-eabi/bin" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.825912602" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/Traukinys}/Debug" id="cdt.managedbuild.builder.gnu.cross.1623443443" keepEnvironmentInBuildfile="false" name="Gnu Make Builder" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/MasterModule11U}/Debug" id="cdt.managedbuild.builder.gnu.cross.298099546" keepEnvironmentInBuildfile="false" name="Gnu Make Builder" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.1202666953" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.option.optimization.level.1724174000" name="Optimization Level" superClass="gnu.c.compiler.option.optimization.level" value="gnu.c.optimization.level.size" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.debugging.level.839756600" name="Debug Level" superClass="gnu.c.compiler.option.debugging.level" value="gnu.c.debugging.level.none" valueType="enumerated"/>
@@ -139,7 +140,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/}&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.542287803" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" valueType="definedSymbols">
-									<listOptionValue builtIn="false" value="__ARM_LPC11XX__"/>
+									<listOptionValue builtIn="false" value="__ARM_LPC11UXX__"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.undef.symbol.192380757" name="Undefined symbols (-U)" superClass="gnu.c.compiler.option.preprocessor.undef.symbol" valueType="undefDefinedSymbols">
 									<listOptionValue builtIn="false" value="__ARM_ARCH_4T__"/>
@@ -159,7 +160,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.1093265927" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
-									<listOptionValue builtIn="false" value="__ARM_LPC11XX__"/>
+									<listOptionValue builtIn="false" value="__ARM_LPC11UXX__"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.preprocessor.undef.1518086745" name="Undefined symbols (-U)" superClass="gnu.cpp.compiler.option.preprocessor.undef" valueType="undefDefinedSymbols">
 									<listOptionValue builtIn="false" value="__ARM_ARCH_4T__"/>
@@ -172,7 +173,7 @@
 									<listOptionValue builtIn="false" value="--gc-sections"/>
 									<listOptionValue builtIn="false" value="-T ../lpc11xx/linkscript.ld"/>
 								</option>
-								<option id="gnu.cpp.link.option.flags.1926394263" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-Wl,-Map,prog.map -mthumb -mcpu=cortex-m0 --specs=nano.specs" valueType="string"/>
+								<option id="gnu.cpp.link.option.flags.1926394263" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-Wl,-Map,prog.map -mthumb -mcpu=cortex-m0" valueType="string"/>
 								<option id="gnu.cpp.link.option.nostart.143031658" name="Do not use standard start files (-nostartfiles)" superClass="gnu.cpp.link.option.nostart" value="true" valueType="boolean"/>
 								<option id="gnu.cpp.link.option.nodeflibs.695626413" name="Do not use default libraries (-nodefaultlibs)" superClass="gnu.cpp.link.option.nodeflibs" value="true" valueType="boolean"/>
 								<option id="gnu.cpp.link.option.nostdlibs.290249648" name="No startup or default libs (-nostdlib)" superClass="gnu.cpp.link.option.nostdlibs" value="true" valueType="boolean"/>
@@ -182,7 +183,7 @@
 									<listOptionValue builtIn="false" value="c"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.58965111" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc/LPC11xxDebug}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/xpcc/LPC11Uxx}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1910865720" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
@@ -205,10 +206,10 @@
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings">
-				<externalSettings containerId="xpcc;cdt.managedbuild.config.gnu.cross.exe.release.735040115.1488316504" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
+				<externalSettings containerId="xpcc;cdt.managedbuild.config.gnu.cross.exe.release.735040115.1333579402" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier">
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/xpcc"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/xpcc/LPC11xxDebug"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/xpcc/LPC11Uxx"/>
 						<entry flags="RESOLVED" kind="libraryFile" name="xpcc" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>

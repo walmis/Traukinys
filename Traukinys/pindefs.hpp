@@ -85,7 +85,7 @@ GPIO__INPUT(speed, 0, 2);
 GPIO__INPUT(alarm, 0, 3);
 
 GPIO__OUTPUT(_led, 0, 4);
-typedef xpcc::gpio::Invert<_led> led;
+typedef xpcc::gpio::Invert<_led> ledRed;
 
 ///radio definitions
 GPIO__OUTPUT(rfSel, 0, 7);
@@ -113,7 +113,7 @@ inline void gpio_init() {
 
 	startStop::setInput();
 
-	led::setOutput(0);
+	ledRed::setOutput(0);
 }
 
 #endif /* PINDEFS_HPP_ */

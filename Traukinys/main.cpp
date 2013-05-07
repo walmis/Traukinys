@@ -1,9 +1,7 @@
-
-#include <LPC11xx.h>
-
 #include <xpcc/architecture.hpp>
 #include <xpcc/workflow.hpp>
 #include <xpcc/debug.hpp>
+#include <xpcc/driver/ui/led.hpp>
 //#include <xpcc/platform>
 #include <xpcc/driver/connectivity/wireless/at86rf230.hpp>
 
@@ -11,7 +9,6 @@
 #include <xpcc/communication/TinyRadioProtocol.hpp>
 
 #include "pindefs.hpp"
-#include "utils.hpp"
 #include "motor_control.hpp"
 #include "rfid.hpp"
 
@@ -193,7 +190,7 @@ public:
 
 private:
 	xpcc::PeriodicTimer<> speedReport;
-	Blinker<xpcc::gpio::Invert<led>> blinker;
+	Blinker<xpcc::gpio::Invert<ledRed>> blinker;
 
 	xpcc::Timeout<> tm;
 	uint8_t tx_buffer[100];
@@ -292,12 +289,14 @@ int main() {
 
 	motorControl.init();
 
-	led::set(1);
+	ledRed::set(1);
 
 	stdout.printf("Starting:\n");
 	stdout.printf("Core Freq: %d\n", SystemCoreClock);
 
 	radio.init();
+	at_radio.setCLKM(rf230::no_clock);
+
 	radio.setAddress(getAddress());
 	radio.setPanId(0x1234);
 

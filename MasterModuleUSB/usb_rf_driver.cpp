@@ -273,6 +273,7 @@ bool USBInterface::EP1_OUT_callback() {
 		break;
 
 	}
+	readStart(EPINT_OUT, 64);
 	return true;
 }
 
@@ -290,5 +291,6 @@ bool USBInterface::EP2_OUT_callback() {
 
 		readEP(EPBULK_OUT, data, &read, 64);
 	}
+	readStart(EPBULK_OUT, 64);
 	return true;
 }
