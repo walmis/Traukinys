@@ -45,70 +45,86 @@ class WirelessDevice(QObject):
 	def associate(self):
 		self.radio.associate(self.address)
 
+
+class WirelessUART(WirelessDevice):
+  
+  def __init__(self, address):
+    WirelessDevice.__init__(self, address)
+    
+  def onBeacon(self, data):
+    if not self.associated:
+	print "assoc with uart"
+	self.associate()
+    else:
+      self.send("\x55\x55\x55")
+	    
+  def send(self, data):
+    self.radio.sendData(self.address, data)
+
 class Train(WirelessDevice):
-	class Cmd:
-		SET_SPEED = 16
-		STOP =17
-		BRAKE =18
-		GET_SPEED=19
+  class Cmd:
+    SET_SPEED = 16
+    STOP =17
+    BRAKE =18
+    GET_SPEED=19
 
-		GPIO_DIR=20
-		GPIO_READ=21
-		GPIO_SET=22
+    GPIO_DIR=20
+    GPIO_READ=21
+    GPIO_SET=22
 
-		SPEED_REPORT=23
-		RFID_READ = 24
-		DEBUG_MSG = 25
+    SPEED_REPORT=23
+    RFID_READ = 24
+    DEBUG_MSG = 25
 	
-	def __init__(self, address):
-		WirelessDevice.__init__(self, address)
-		self.speed = 0
-		self.currentSpeed = 0
-		
-		self.associationChanged.connect(self.onAssocChanged)
-		
-	currentSpeedChanged = Signal(int)
-	speedChanged = Signal(int)
-	beaconReceived = Signal()
-		
-	def onAssocChanged(self):
-		if self.associated:
-			print "Associated"
-			#restore last used speed
-			self.setSpeed(self.speed)
-			
-			for train in app.trains:
-				if train.id == self.beacon_data:
-					train.assign(self)
-		else:
-			print "disassoc"
-		
-	def setSpeed(self, speed):
-		self.radio.sendRequest(self.address, Train.Cmd.SET_SPEED, struct.pack("b", speed), int(usbradio.TxFlags.TX_ENCRYPT))
-		self.speed = speed
-		self.speedChanged.emit(self.speed)
+  def __init__(self, address):
+    WirelessDevice.__init__(self, address)
+    self.speed = 0
+    self.currentSpeed = 0
+    
+    self.associationChanged.connect(self.onAssocChanged)
+	  
+  currentSpeedChanged = Signal(int)
+  speedChanged = Signal(int)
+  beaconReceived = Signal()
+	  
+  def onAssocChanged(self):
+	  if self.associated:
+		  print "Associated"
+		  #restore last used speed
+		  self.setSpeed(self.speed)
+		  
+		  for train in app.trains:
+			  if train.id == self.beacon_data:
+				  train.assign(self)
+	  else:
+		  print "disassoc"
+	  
+  def setSpeed(self, speed):
+	  self.radio.sendRequest(self.address, Train.Cmd.SET_SPEED, struct.pack("b", speed), int(usbradio.TxFlags.TX_ENCRYPT))
+	  self.speed = speed
+	  self.speedChanged.emit(self.speed)
 
-		
-	def onData(self, frame, header, data):
-		
-		if header.req_id == Train.Cmd.SPEED_REPORT:
-			self.currentSpeed = struct.unpack("I", data)[0]
-			self.currentSpeedChanged.emit(self.currentSpeed)
-			
-		elif header.req_id == Train.Cmd.DEBUG_MSG:
-			print "\033[1;31m", data, "\033[1;m",
-			
-		elif header.req_id == Train.Cmd.RFID_READ:
-			print "Read rfid:", data.encode("hex")
-			f.write("rfid: %s\n" % data.encode("hex"))
-			f.flush()
-	
-	def onBeacon(self, data):
-		print "train beacon"
-		if not self.associated:
-			self.associate()
-		
-		self.beaconReceived.emit()
+	  
+  def onData(self, frame, header, data):
+	  
+	  if header.req_id == Train.Cmd.SPEED_REPORT:
+		  self.currentSpeed = struct.unpack("I", data)[0]
+		  self.currentSpeedChanged.emit(self.currentSpeed)
+		  
+	  elif header.req_id == Train.Cmd.DEBUG_MSG:
+		  print "\033[1;31m", data, "\033[1;m",
+		  
+	  elif header.req_id == Train.Cmd.RFID_READ:
+		  print "Read rfid:", data.encode("hex")
+		  f.write("rfid: %s\n" % data.encode("hex"))
+		  f.flush()
+
+  def onBeacon(self, data):
+	  print "train beacon"
+	  if not self.associated:
+		  self.associate()
+	  
+	  self.beaconReceived.emit()
 
 class Radio(usbradio.TinyRadioProtocol):
 	
@@ -133,6 +149,15 @@ class Radio(usbradio.TinyRadioProtocol):
 			self.devices[address].beacon_name = name
 			self.devices[address].beacon_data = beacon_data
 			self.devices[address].onBeacon(beacon)
+			
+		if name == "WirelessUART" and beacon_data == "0102030405060708":
+			if not address in self.devices:
+				self.devices[address] =	WirelessUART(address)
+				self.devices[address].radio = self
+			
+			self.devices[address].beacon_name = name
+			self.devices[address].beacon_data = beacon_data
+			self.devices[address].onBeacon(beacon)		  
 		
 	def eventHandler(self, address, event):
 		if address in self.devices:
@@ -218,7 +243,7 @@ class App(QApplication):
 		
 		self.trains = []
 		
-		self.train_blue = TrainUI("c13f4443366ce3b8");
+		self.train_blue = TrainUI("d8014443a76ce3b8");
 		self.train_blue.dGreitis.setStyleSheet("background: rgba(0, 25, 255, 128)")
 
 		self.train_red = TrainUI("e73e4443ca6be3b8");
@@ -251,22 +276,7 @@ class App(QApplication):
 		
 		self.radio.poll()
 		
-		
 
-def keyboard(banner=None):
-    import code, sys
-
-    # use exception trick to pick up the current frame
-    try:
-        raise None
-    except:
-        frame = sys.exc_info()[2].tb_frame.f_back
-
-    # evaluate commands in current namespace
-    namespace = frame.f_globals.copy()
-    namespace.update(frame.f_locals)
-
-    code.interact(banner=banner, local=namespace)
 
 
 app = App()

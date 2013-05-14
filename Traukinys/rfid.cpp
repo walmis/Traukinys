@@ -141,7 +141,7 @@ bool RFID::init()
 	//writeMFRC522(TestPinEnReg, )
 
 	uint8_t ver = readMFRC522(VersionReg);
-	if(ver != 0x91) {
+	if(ver != 0x91 && ver != 0x92) {
 		return false;
 	}
 

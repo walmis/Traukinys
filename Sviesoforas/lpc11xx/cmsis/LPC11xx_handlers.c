@@ -43,7 +43,7 @@
  * Forward undefined IRQ handlers to an infinite loop function. The Handlers
  * are weakly aliased which means that (re)definitions will overide these.
  *****************************************************************************/
-#include <lpc11xx/cmsis/LPC11xx.h>
+#include <LPC11xx.h>
 
 extern void default_irq_handler();
 
@@ -77,8 +77,10 @@ void WAKEUP_IRQHandler(void)    WEAK_ALIAS(irq_undefined);
  * Forward undefined fault handlers to an infinite loop function. The Handlers
  * are weakly aliased which means that (re)definitions will overide these.
  ****************************************************************************/
+extern __attribute((weak)) void fault_handler() {}
+
 void fault_undefined() {
-  // Do nothing when occured interrupt is not defined, just keep looping
+	fault_handler();
 	while(1);
 }
 

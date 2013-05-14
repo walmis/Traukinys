@@ -65,6 +65,10 @@ public:
 
 	}
 
+	bool sendData(uint16_t address, std::string data) {
+		return Base::send(address, (uint8_t*)data.c_str(), (uint16_t)(data.length()));
+	}
+
 	UsbRfDriver* getDriver() {
 		return &driver;
 	}
@@ -278,6 +282,7 @@ BOOST_PYTHON_MODULE(usbradio)
 			.def("setPanId", &Radio::setPanId)
 			.def("getAddress", &Radio::getAddress)
 
+			.def("sendData", &Radio::sendData)
 			.def("send", &Radio::send, send_overloads())
 			.def("sendRequest", &Radio::sendRequest)
 
