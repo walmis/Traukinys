@@ -5,6 +5,11 @@ from PySide.QtUiTools import QUiLoader
 from PySide.QtCore import *
 from PySide.QtGui import *
 import struct
+import json
+
+from httpserver import HttpServer
+
+from array import array
 
 f = open("rfid.txt", "w")
 
@@ -13,6 +18,9 @@ import time
 from traukinys_ui import Ui_Traukinys
 
 app = None
+
+import Stendas
+
 
 class WirelessDevice(QObject):
 	associationChanged = Signal()
@@ -51,15 +59,40 @@ class WirelessUART(WirelessDevice):
   def __init__(self, address):
     WirelessDevice.__init__(self, address)
     
+    app.serial = self
+    self.startTimer(10)
+    
+    self.tx_buffer = array('B')
+    
+    self.associationChanged.connect(self.onAssocChanged)
+    
   def onBeacon(self, data):
     if not self.associated:
 	print "assoc with uart"
 	self.associate()
-    else:
-      self.send("\x55\x55\x55")
 	    
-  def send(self, data):
-    self.radio.sendData(self.address, data)
+  def write(self, data):
+    for c in data:
+      self.tx_buffer.append(ord(c))
+
+    if len(self.tx_buffer) >= 90:
+      #print "send", len(self.tx_buffer)
+      self.radio.sendData(self.address, self.tx_buffer.tostring())
+      
+      while len(self.tx_buffer):
+	self.tx_buffer.pop(-1)
+    
+  def onAssocChanged(self):
+	pass
+      
+  def timerEvent(self, event):
+   # print "timer"
+    if len(self.tx_buffer) > 0:
+      #print "send_", len(self.tx_buffer)
+      self.radio.sendData(self.address, self.tx_buffer.tostring())
+      while len(self.tx_buffer):
+	self.tx_buffer.pop(-1)
+      #print len(self.tx_buffer)
 
 class Train(WirelessDevice):
   class Cmd:
@@ -180,6 +213,42 @@ class Radio(usbradio.TinyRadioProtocol):
 
 
 
+class IesmoMygtukas(QToolButton):
+  def __init__(self, iesmas):
+      QToolButton.__init__(self)
+      
+      self.setGeometry(QRect(0, 0, 64, 64))
+      sizePolicy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+      sizePolicy.setHorizontalStretch(0)
+      sizePolicy.setVerticalStretch(0)
+      sizePolicy.setHeightForWidth(self.sizePolicy().hasHeightForWidth())
+      self.setSizePolicy(sizePolicy)
+      self.setMinimumSize(QSize(64, 64))
+      self.setStyleSheet("background-color: rgba(0, 0, 220, 128); font: 12pt \"Sans Serif\";")
+      self.setCheckable(True)
+      
+      self.iesmas = iesmas
+      iesmas.stateChanged.connect(self.onIesmasChanged)
+      
+      self.clicked.connect(self.onClicked)
+      
+      if type(iesmas) == Stendas.Iesmas:
+	self.setText("%X" % (iesmas.address) + "." + str(iesmas.port))
+	
+  def onIesmasChanged(self):
+    self.setChecked(self.iesmas.state)
+  
+    if self.iesmas.state:
+      self.setStyleSheet("background-color: rgba(220, 0, 0, 128); font: 12pt \"Sans Serif\";")
+    else:
+      self.setStyleSheet("background-color: rgba(0, 0, 220, 128); font: 12pt \"Sans Serif\";")
+
+
+  def onClicked(self):
+    
+    self.iesmas.state = self.isChecked()
+      
+
 class TrainUI(QMainWindow, Ui_Traukinys):
 
 	def __init__(self, id, parent=None):
@@ -217,6 +286,79 @@ class TrainUI(QMainWindow, Ui_Traukinys):
 	def onSetSpeed(self, speed):
 		self.train.setSpeed(speed)
 		
+		
+		
+from urlparse import urlparse, parse_qs
+from BaseHTTPServer import BaseHTTPRequestHandler
+
+class Handler(BaseHTTPRequestHandler):
+
+  def do_GET(self):
+  
+    self.send_response(200)
+    self.send_header("Content-type", "text/json")
+    self.send_header("Connection", "close")
+    self.end_headers()
+    
+    print self.path
+    data = parse_qs(urlparse(self.path).query)
+    print data
+    
+    json_data = {}
+    
+    json_data["traukiniai"] = {}
+    
+    if self.path == "/?getstatus":
+    
+      c = 0
+      for t in app.trains:
+	t = t.train
+	  
+	if t:  
+	  json_data["traukiniai"][str(c)] = {
+	      "signal": -91 + t.rssi,
+	      "speed": t.currentSpeed,
+	      "active": bool(t.associated)
+	    }
+	else:
+	  json_data["traukiniai"][str(c)] = {
+	    "signal": -91,
+	    "speed": 0,
+	    "active": False
+	  }
+	
+	c+=1
+	 
+      json_data["iesmai"] = {}
+	
+      for iesmas in app.stendas.iesmai.values():
+	json_data["iesmai"]["%X.%d" % (iesmas.address, iesmas.port)] = {
+	    "state": int(iesmas.state)
+	  }
+      
+	
+      self.wfile.write(json.dumps(json_data))
+ 
+      self.wfile.write("\n")
+      
+    else:
+      if "switch" in data and "state" in data:
+	app.stendas.iesmai[data["switch"][0]].state = int(data["state"][0])
+      
+      
+      if "tr" in data and "speed" in data:
+	print data["tr"]
+	print data["speed"]
+	
+	t = app.trains[int(data["tr"][0])]
+	
+	if t.train:
+	
+	  t.train.setSpeed(int(data["speed"][0]))
+    
+      
+    self.wfile.write("")
+    self.wfile.close()
 
 class App(QApplication):
 	def __init__(self):
@@ -239,6 +381,8 @@ class App(QApplication):
 		
 		self.interface.show()
 		
+		self.serial = None
+		
 		#self.interface.dial.valueChanged.connect(self.on_speed_changed)
 		
 		self.trains = []
@@ -255,16 +399,31 @@ class App(QApplication):
 		self.trains.append(self.train_blue)
 		self.trains.append(self.train_green)
 		self.trains.append(self.train_red)
+		
+		self.stendas = Stendas.Stendas(self)
+		
+		self.iesmai = []
+		
+		
+		for iesmas in self.stendas.iesmai.values():
+		  self.iesmai.append( IesmoMygtukas(iesmas) )
+		
+		cnt = 0
+		for i in self.iesmai:
+		  self.interface.iesmai.insertWidget(cnt, i)
+		  cnt+=1
 
 		
-		
-		self.interface.traukiniai.addWidget(self.train_green)
-		self.interface.traukiniai.addWidget(self.train_red)
-		self.interface.traukiniai.addWidget(self.train_blue)
+		for i in self.trains:
+		  self.interface.traukiniai.addWidget(i)
 		
 		self.prev_speed = 0
 		
 		self.startTimer(0)
+		
+		
+		self.httpserver = HttpServer(Handler)
+	      
 		
 	def on_speed_changed(self, slider):
 		print self.radio.devices
@@ -278,9 +437,9 @@ class App(QApplication):
 		
 
 
-
-app = App()
-app.exec_()
+if __name__ == "__main__":
+  app = App()
+  app.exec_()
 
 
 	

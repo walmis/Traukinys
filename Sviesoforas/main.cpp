@@ -12,7 +12,7 @@ lpc::Uart1 uart(38400);
 //static xpcc::IODeviceWrapper<lpc::Uart1> device;
 //xpcc::IOStream stdout(device);
 
-const uint8_t address = 0x20;
+const uint8_t address = 0x3B;
 
 #define SVIESOFORAS4
 

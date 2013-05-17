@@ -239,7 +239,6 @@ bool rfid_init() {
 
 void idleTask(){
 	static xpcc::PeriodicTimer<> tm(1000);
-	static xpcc::PeriodicTimer<> rfid_tm(10);
 
 	if(!progPin::read()) {
 		NVIC_SystemReset();
@@ -252,7 +251,7 @@ void idleTask(){
 		}
 	}
 
-	if(rfid.isConnected() && rfid_tm.isExpired() && rfid.isCard()) {
+	if(rfid.isConnected() && rfid.isCard()) {
 
 		stdout.printf("RFID: Card Detected\n");
 		for(int i = 0; i < 3; i++) {

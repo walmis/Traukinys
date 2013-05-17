@@ -1,7 +1,5 @@
 import serial
 
-ser = serial.Serial("/dev/ttyUSB0", 38400, timeout=0)
-
 import sys
 import random
 import time
@@ -10,19 +8,34 @@ count = 0
 from PySide.QtCore import *
 from PySide.QtGui import *
 
+import json
+
 class Irenginys(QObject):
   def __init__(self, address):
     QObject.__init__(self)  
     self.address = address
     self.data = 0
+    
+    self.timer = QTimer()
+    self.timer.timeout.connect(self.update)
+    self.timer.start(5000)
+    
+    
+  def update(self):
+    self.send(self.data)
       
   def send(self, data):
-    print "send", self.address, data
-    ser.write("\x55")
-    ser.write(chr(self.address))
-    ser.write(chr(data))
-    
     self.data = data
+    
+    if Stendas.app.serial:
+      print "send", self.address, data
+      Stendas.app.serial.write("\x55")
+      Stendas.app.serial.write(chr(self.address))
+      Stendas.app.serial.write(chr(data))
+      
+      
+    else:
+      print "Nera wireless serial interfeiso!!!"
     
 class Ruozas(QObject):
   def __init__(self, nr, slow=False):
@@ -86,14 +99,18 @@ class Iesmas(Irenginys):
     else:
       return self.ruozas2
     
-  def next(self):
-    road = self.getRoad()
-    if road.end0 == self:
-      return road.end1
-    elif road.end1 == self:
-      return road.end0
+  def next(self, kelias=None):
+    if not kelias:
+      road = self.getRoad()
+      if road.end0 == self:
+	return road.end1
+      elif road.end1 == self:
+	return road.end0
+      else:
+	return 
     else:
-      return None
+      #TODO
+      pass
     
   def prev(self):
     road = self.in_ruozas
@@ -102,7 +119,10 @@ class Iesmas(Irenginys):
     elif road.end1 == self:
       return road.end0
     else:
-      return None   
+      return None  
+    
+  def update(self):
+    pass
     
     
   
@@ -122,6 +142,51 @@ class Iesmas(Irenginys):
   
   stateChanged = Signal()
   state = Property(int, getState, setState, notify=stateChanged)
+  
+  
+class SlaveIesmas(Iesmas):
+  
+  def __init__(self, masterIesmas, port, in_ruozas, out_ruozas1, out_ruozas2):
+    QObject.__init__(self)
+    
+    self.in_ruozas = in_ruozas
+    self.ruozas1 = out_ruozas1
+    self.ruozas2 = out_ruozas2
+    
+    self.in_ruozas.addEnd(self)
+    self.ruozas1.addEnd(self)
+    self.ruozas2.addEnd(self)  
+    
+    self._state = 0
+    
+    self.master = masterIesmas
+    
+    self.address = masterIesmas.address
+    self.port = port
+    
+    masterIesmas.stateChanged.connect(self.onMasterChanged)
+  
+  def __str__(self):
+    return " ".join(("Iesmas", hex(self.address)+"."+str(self.master.port)+"."+str(self.port), "(%d)" % self._state)) 
+ 
+  def onMasterChanged(self):
+    self.state = self.master.state
+    
+  def getState(self):
+    return self.master.state
+  
+  def update(self):
+    print "---update"
+  
+  def setState(self, state):
+    print "---setstate"
+    self.stateChanged.emit()
+  
+  stateChanged = Signal()
+  state = Property(int, getState, setState, notify=stateChanged)
+
+    
+    
     
 class Sviesoforas2(Irenginys):
   def __init__(self, address, iesmas, invert=False):
@@ -174,13 +239,51 @@ class Sviesoforas4(Irenginys):
     GELTONA2 = 4 #dvi geltonos sviecia
     GELTONA2_MIRKS1 = 5 #apatine geltona sviecia, virsutine mirksi
     
-  def __init__(self, address, iesmas):
+  def __init__(self, address, iesmas, ruozas=None, evalfn=None):
     Irenginys.__init__(self, address)
     
     self.state = Sviesoforas4.State.ZALIA
     self.blink_tm = self.startTimer(800)
     
+    self.iesmas = iesmas
+    self.ruozas = ruozas
     
+    self.evalfn = evalfn
+    
+    self.iesmas.stateChanged.connect(self.onIesmasStateChanged)
+    
+    self._evalState()
+    
+  def listen(self, other_object):
+    other_object.stateChanged.connect(self._evalState)
+    return self
+    
+  def onIesmasStateChanged(self):
+    self._evalState()
+    
+  def _evalState(self):
+    print self, "evalState"
+    
+    if self.evalfn:
+      state = self.evalfn()
+      print "evalfn", state
+      if state != None:
+	self.state = state
+	return
+    
+    if self.iesmas.in_ruozas == self.ruozas:
+      pass
+    elif self.ruozas == self.iesmas.ruozas1 and self.iesmas.state == 1:
+      self.state = Sviesoforas4.State.RAUDONA
+      return
+    
+    elif self.ruozas == self.iesmas.ruozas2 and self.iesmas.state == 0:
+      self.state = Sviesoforas4.State.RAUDONA
+      return
+    
+    self.state = Sviesoforas4.State.ZALIA
+    
+   
   def setState(self, state):
     if state == Sviesoforas4.State.ZALIA:
       self.send(0b0010)
@@ -227,12 +330,14 @@ class Sviesoforas3(Irenginys):
 
   
                     
-class App(QApplication):
-  def __init__(self):
-    QApplication.__init__(self, sys.argv)
+class Stendas(QObject):
+  app = None
+  def __init__(self, app):
+    QObject.__init__(self)
     
-    self.ruozai = \
-    [
+    Stendas.app = app
+    
+    self.ruozai = [
       Ruozas(0),
       Ruozas(1),
       Ruozas(2),
@@ -241,41 +346,95 @@ class App(QApplication):
       Ruozas(5),
       Ruozas(6),
       Ruozas(7),
+      Ruozas(8),
+      Ruozas(9),
+      Ruozas(10),
+      Ruozas(11),
+      Ruozas(12),
+      Ruozas(13),
+      Ruozas(14),
+      Ruozas(15),
+      Ruozas(16),
+      Ruozas(17),
+      Ruozas(18),
+      Ruozas(19),
+      Ruozas(20),
+      Ruozas(21),
     ]
     
     self.iesmai = {
 	"F0.0": Iesmas(0xF0, 0, self.ruozai[6], self.ruozai[7], self.ruozai[1]),
 	"F0.1": Iesmas(0xF0, 1, self.ruozai[7], self.ruozai[2], self.ruozai[3]),
 	
-	"F1.0": Iesmas(0xF1, 0, self.ruozai[0], self.ruozai[1], self.ruozai[4]),
+	"F1.0": Iesmas(0xF1, 0, self.ruozai[0], self.ruozai[4], self.ruozai[1]),
 	"F1.1": Iesmas(0xF1, 1, self.ruozai[4], self.ruozai[2], self.ruozai[3]),
+	
+	"F2.0": Iesmas(0xF2, 0, self.ruozai[0], self.ruozai[18], self.ruozai[16]),
+	"F2.1": Iesmas(0xF2, 1, self.ruozai[9], self.ruozai[19], self.ruozai[20]),
+	
+	"F4.0": Iesmas(0xF4, 0, self.ruozai[6], self.ruozai[9], self.ruozai[8]),
+	
+	
     }
+    
+    self.iesmai["F2.0.0"] = SlaveIesmas(self.iesmai["F2.0"], 0, self.ruozai[19], self.ruozai[18], self.ruozai[15])
+    self.iesmai["F2.0.1"] = SlaveIesmas(self.iesmai["F2.0"], 1, self.ruozai[8],  self.ruozai[17], self.ruozai[16])
+    self.iesmai["F2.0.2"] = SlaveIesmas(self.iesmai["F2.0"], 2, self.ruozai[10], self.ruozai[17], self.ruozai[15])
 	
     self.sviesoforai = {
-      0x07 : Sviesoforas2(0x07, self.iesmai["F0.0"], invert=True),
+      #0x06 : Sviesoforas2(0x06, self.iesmai["F4.0"], invert=True),
+      
       0x08 : Sviesoforas2(0x08, self.iesmai["F0.1"], invert=True),
-      0x23 : Sviesoforas4(0x23, self.iesmai["F0.0"])
+      0x09 : Sviesoforas2(0x09, self.iesmai["F0.1"], invert=True),
+      
+      0x07 : Sviesoforas2(0x07, self.iesmai["F0.0"], invert=True),
+      
+      0x08 : Sviesoforas2(0x08, self.iesmai["F0.1"], invert=False),
+      0x0E : Sviesoforas2(0x0E, self.iesmai["F0.0"], invert=False),
+      
+      0x23 : Sviesoforas4(0x23, self.iesmai["F0.0"]),
+      
+      0x17 : Sviesoforas4(0x17, self.iesmai["F1.1"], self.ruozai[3], 
+			  lambda: Sviesoforas4.State.RAUDONA if self.iesmai["F1.0"].state else None).listen(self.iesmai["F1.0"]),
+      
+      0x21 : Sviesoforas4(0x21, self.iesmai["F1.1"], self.ruozai[2], 
+			  lambda: Sviesoforas4.State.RAUDONA if self.iesmai["F1.0"].state else None).listen(self.iesmai["F1.0"]),
+      
+      0x25 : Sviesoforas4(0x25, self.iesmai["F1.0"], self.ruozai[1]),
+      
+      0x24 : Sviesoforas4(0x24, self.iesmai["F2.0.2"]),
+      0x1A : Sviesoforas4(0x1A, self.iesmai["F2.0"]),
+       
+      0x1B : Sviesoforas4(0x1B, self.iesmai["F2.0.0"]),
+      0x20 : Sviesoforas4(0x20, self.iesmai["F2.0.1"]),
+      
+      0x22 : Sviesoforas4(0x22, self.iesmai["F4.0"], self.ruozai[8]),
+      0x3B : Sviesoforas4(0x3B, self.iesmai["F4.0"], self.ruozai[9]),
     }
+
     
     for r in self.ruozai:
       print r
     print self.iesmai["F0.0"]
     self.iesmai["F0.0"].setState(0)
+    self.iesmai["F0.1"].setState(0)
+    
+    #self.startTimer(1000)
     
     #print self.iesmai["F0.0"]
-    #print self.iesmai["F0.0"].next()
+    #print self.iesmai["F0.0"].next()pas
     #self.iesmai["F0.0"].setState(0)
-    state = 0
-    while 1:
-      time.sleep(2)
-      state = not state
-      self.iesmai["F0.1"].setState(state)
+    self.state = 0
+    #while 1:
+    #  time.sleep(2)
+    #  state = not state
+    #  self.iesmai["F0.1"].setState(state)
       
-    
+  def timerEvent(self, event):
+      print "tm--------------------"
+      self.state = not self.state
+      self.iesmai["F0.1"].setState(self.state)  
     #print self.iesmai["F0.0"]
     #print self.iesmai["F0.0"].next()
     #print self.iesmai["F0.0"].next().next()
     #print self.iesmai["F0.0"].next().next().prev()
-
-app = App()
-app.exec_()
