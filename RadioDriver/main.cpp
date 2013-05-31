@@ -12,6 +12,3 @@
 #include "UsbRfDriver.hpp"
 #include "PyInterface.hpp"
 
-
-
-

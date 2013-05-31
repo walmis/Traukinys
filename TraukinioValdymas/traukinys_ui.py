@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'traukinys.ui'
 #
-# Created: Thu May 16 16:24:24 2013
+# Created: Mon May 20 16:49:34 2013
 #      by: pyside-uic 0.2.14 running on PySide 1.1.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -106,13 +106,13 @@ class Ui_Traukinys(object):
         self.dockWidgetContents_2.setObjectName("dockWidgetContents_2")
         self.verticalLayout_3 = QtGui.QVBoxLayout(self.dockWidgetContents_2)
         self.verticalLayout_3.setObjectName("verticalLayout_3")
-        self.plainTextEdit = QtGui.QPlainTextEdit(self.dockWidgetContents_2)
-        self.plainTextEdit.setStyleSheet("font: 8pt \"monospace\";")
-        self.plainTextEdit.setUndoRedoEnabled(False)
-        self.plainTextEdit.setPlainText("")
-        self.plainTextEdit.setTextInteractionFlags(QtCore.Qt.TextSelectableByKeyboard|QtCore.Qt.TextSelectableByMouse)
-        self.plainTextEdit.setObjectName("plainTextEdit")
-        self.verticalLayout_3.addWidget(self.plainTextEdit)
+        self.infoText = QtGui.QPlainTextEdit(self.dockWidgetContents_2)
+        self.infoText.setStyleSheet("font: 8pt \"monospace\";")
+        self.infoText.setUndoRedoEnabled(False)
+        self.infoText.setPlainText("")
+        self.infoText.setTextInteractionFlags(QtCore.Qt.TextSelectableByKeyboard|QtCore.Qt.TextSelectableByMouse)
+        self.infoText.setObjectName("infoText")
+        self.verticalLayout_3.addWidget(self.infoText)
         self.dockWidget.setWidget(self.dockWidgetContents_2)
         self.verticalLayout_2.addWidget(self.dockWidget)
         self.verticalLayout.addWidget(self.frame)

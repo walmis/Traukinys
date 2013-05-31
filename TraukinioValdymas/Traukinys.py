@@ -9,9 +9,9 @@ import json
 
 from httpserver import HttpServer
 
-from array import array
-
-f = open("rfid.txt", "w")
+from WirelessDevice import WirelessDevice
+from WirelessUART import WirelessUART
+from RFIDTag import RFIDTag
 
 import time
 
@@ -20,79 +20,6 @@ from traukinys_ui import Ui_Traukinys
 app = None
 
 import Stendas
-
-
-class WirelessDevice(QObject):
-	associationChanged = Signal()
-	
-	rssiUpdated = Signal()
-	
-
-	def __init__(self, address):
-		QObject.__init__(self)
-		self.address = address
-		self.associated = False
-		
-		self.rssi = 0
-		self.lqi = 0
-		
-		self.beacon_data = ""
-		self.beacon_name = ""
-		
-	def onEvent(self, event):
-		if event == usbradio.EventType.ASSOCIATION_EVENT:
-			self.associated = True
-			self.associationChanged.emit()
-		elif event == usbradio.EventType.DISASSOCIATION_EVENT:
-			self.associated = False
-			self.associationChanged.emit()
-			
-	def onBeacon(self, data):
-		pass
-		
-	def associate(self):
-		self.radio.associate(self.address)
-
-
-class WirelessUART(WirelessDevice):
-  
-  def __init__(self, address):
-    WirelessDevice.__init__(self, address)
-    
-    app.serial = self
-    self.startTimer(10)
-    
-    self.tx_buffer = array('B')
-    
-    self.associationChanged.connect(self.onAssocChanged)
-    
-  def onBeacon(self, data):
-    if not self.associated:
-	print "assoc with uart"
-	self.associate()
-	    
-  def write(self, data):
-    for c in data:
-      self.tx_buffer.append(ord(c))
-
-    if len(self.tx_buffer) >= 90:
-      #print "send", len(self.tx_buffer)
-      self.radio.sendData(self.address, self.tx_buffer.tostring())
-      
-      while len(self.tx_buffer):
-	self.tx_buffer.pop(-1)
-    
-  def onAssocChanged(self):
-	pass
-      
-  def timerEvent(self, event):
-   # print "timer"
-    if len(self.tx_buffer) > 0:
-      #print "send_", len(self.tx_buffer)
-      self.radio.sendData(self.address, self.tx_buffer.tostring())
-      while len(self.tx_buffer):
-	self.tx_buffer.pop(-1)
-      #print len(self.tx_buffer)
 
 class Train(WirelessDevice):
   class Cmd:
@@ -115,57 +42,77 @@ class Train(WirelessDevice):
     self.currentSpeed = 0
     
     self.associationChanged.connect(self.onAssocChanged)
-	  
+    
+    self.prev_rfid = None
+  
   currentSpeedChanged = Signal(int)
   speedChanged = Signal(int)
   beaconReceived = Signal()
+  onRfidRead = Signal(str)
+  onDebugMsg = Signal(str)
 	  
   def onAssocChanged(self):
-	  if self.associated:
-		  print "Associated"
-		  #restore last used speed
-		  self.setSpeed(self.speed)
-		  
-		  for train in app.trains:
-			  if train.id == self.beacon_data:
-				  train.assign(self)
-	  else:
-		  print "disassoc"
+    if self.associated:
+      #restore last used speed
+      self.setSpeed(self.speed)
+      
+      for train in app.trains:
+	if train.id == self.beacon_data:
+	  train.assign(self)
 	  
   def setSpeed(self, speed):
-	  self.radio.sendRequest(self.address, Train.Cmd.SET_SPEED, struct.pack("b", speed), int(usbradio.TxFlags.TX_ENCRYPT))
-	  self.speed = speed
-	  self.speedChanged.emit(self.speed)
+    self.radio.sendRequest(self.address, Train.Cmd.SET_SPEED, struct.pack("b", speed), int(usbradio.TxFlags.TX_ENCRYPT | usbradio.TxFlags.TX_ACKREQ))
+    self.speed = speed
+    self.speedChanged.emit(self.speed)
+    
+  def updateSpeed(self):
+    self.radio.sendRequest(self.address, Train.Cmd.GET_SPEED, "", int(usbradio.TxFlags.TX_ENCRYPT | usbradio.TxFlags.TX_ACKREQ))
+  
+  def brake(self):
+    self.radio.sendRequest(self.address, Train.Cmd.BRAKE, "", int(usbradio.TxFlags.TX_ENCRYPT | usbradio.TxFlags.TX_ACKREQ))
+  
+  def stop(self):
+    self.setSpeed(0)
 
-	  
+  def onResponse(self, frame, request, data):
+    pass
+
   def onData(self, frame, header, data):
 	  
-	  if header.req_id == Train.Cmd.SPEED_REPORT:
-		  self.currentSpeed = struct.unpack("I", data)[0]
-		  self.currentSpeedChanged.emit(self.currentSpeed)
-		  
-	  elif header.req_id == Train.Cmd.DEBUG_MSG:
-		  print "\033[1;31m", data, "\033[1;m",
-		  
-	  elif header.req_id == Train.Cmd.RFID_READ:
-		  print "Read rfid:", data.encode("hex")
-		  f.write("rfid: %s\n" % data.encode("hex"))
-		  f.flush()
+    if header.req_id == Train.Cmd.SPEED_REPORT:
+      self.currentSpeed = struct.unpack("I", data)[0]
+      self.currentSpeedChanged.emit(self.currentSpeed)
+	    
+    elif header.req_id == Train.Cmd.DEBUG_MSG:
+      #print "\033[1;31m", data, "\033[1;m",
+      self.onDebugMsg.emit(data)
+	    
+    elif header.req_id == Train.Cmd.RFID_READ:
+      #print "Read rfid:", data.encode("hex")
+      code = data.encode("hex")
+      self.onRfidRead.emit(code)
+      RFIDTag.trigger(code, self)
+      
+      self.prev_rfid = code
 
   def onBeacon(self, data):
-	  print "train beacon"
-	  if not self.associated:
-		  self.associate()
-	  
-	  self.beaconReceived.emit()
+    if not self.associated:
+      self.associate()
+
+    self.beaconReceived.emit()
+
+
+class RadioDelegate(QObject):
+    deviceAdded = Signal(object)
 
 class Radio(usbradio.TinyRadioProtocol):
-	
 	def __init__(self):
 		usbradio.TinyRadioProtocol.__init__(self)
 		#QObject.__init__(self)
 		
 		self.devices = {}
+		
+		self.signals = RadioDelegate()
 	
 	def beaconHandler(self, address, beacon):
 		print "beacon: %04x" % address, str(beacon.name) + " [" + str(beacon.data).encode('hex_codec') + "]"
@@ -178,19 +125,25 @@ class Radio(usbradio.TinyRadioProtocol):
 			if not address in self.devices:
 				self.devices[address] =	Train(address)
 				self.devices[address].radio = self
+				self.signals.deviceAdded.emit(self.devices[address])
 			
 			self.devices[address].beacon_name = name
 			self.devices[address].beacon_data = beacon_data
 			self.devices[address].onBeacon(beacon)
 			
+			
+			
 		if name == "WirelessUART" and beacon_data == "0102030405060708":
 			if not address in self.devices:
 				self.devices[address] =	WirelessUART(address)
 				self.devices[address].radio = self
+				self.signals.deviceAdded.emit(self.devices[address])
 			
 			self.devices[address].beacon_name = name
 			self.devices[address].beacon_data = beacon_data
-			self.devices[address].onBeacon(beacon)		  
+			self.devices[address].onBeacon(beacon)	
+			
+			
 		
 	def eventHandler(self, address, event):
 		if address in self.devices:
@@ -199,6 +152,12 @@ class Radio(usbradio.TinyRadioProtocol):
 	def dataHandler(self, frame, header, address, data):
 		if address in self.devices:
 			self.devices[address].onData(frame, header, data)
+			
+	def responseHandler(self, frame, request, data):
+	  address = frame.getSrcAddress()
+	  
+	  if address in self.devices:
+	    self.devices[address].onResponse(frame, request, data)
 			
 	def frameHandler(self, frame):
 		m = usbradio.MacFrame(frame)
@@ -251,65 +210,112 @@ class IesmoMygtukas(QToolButton):
 
 class TrainUI(QMainWindow, Ui_Traukinys):
 
-	def __init__(self, id, parent=None):
-		super(TrainUI, self).__init__(parent)
-		self.setupUi(self)	
-		self.id = id
-		self.train = None
-		
-		self.dGreitis.valueChanged.connect(self.onSetSpeed)
-		
-	def assign(self, train):
-		print "assign", self, train
-		self.train = train
-		
-		train.rssiUpdated.connect(self.onRssiUpdated)
-		train.associationChanged.connect(self.onAssocChanged)
-		train.currentSpeedChanged.connect(self.onTrainSpeedChanged)
-		
-		self.setEnabled(True)
-		
-		
-	def onRssiUpdated(self):
-		self.pSignalas.setProperty("value", -91 + self.train.rssi)
-		
-	def onAssocChanged(self):
-		if not self.train.associated:
-			self.setEnabled(False)
-			self.pSignalas.setValue(-91)
-		else:
-			self.setEnabled(True)
-			
-	def onTrainSpeedChanged(self, speed):
-		self.lSpeed.setText("%s" % speed)
-		
-	def onSetSpeed(self, speed):
-		self.train.setSpeed(speed)
-		
+  def __init__(self, id, parent=None):
+	  super(TrainUI, self).__init__(parent)
+	  self.setupUi(self)	
+	  self.id = id
+	  self.train = None
+	  
+	  self.dGreitis.valueChanged.connect(self.onSetSpeed)
+	  self.bStabis.clicked.connect(self.onBrake)
+	  
+  def assign(self, train):
+	  print "assign", self, train
+	  
+	  if not self.train:
+	    self.train = train
+
+	    train.rssiUpdated.connect(self.onRssiUpdated)
+	    train.associationChanged.connect(self.onAssocChanged)
+	    train.currentSpeedChanged.connect(self.onTrainSpeedChanged)
+	    train.onRfidRead.connect(self.onRfidRead)
+	    train.onDebugMsg.connect(self.onDebugMsg)
+	    train.speedChanged.connect(self.onSpeedChanged)
+	    train.associationChanged.connect(self.onTrainAssociated)
+	    
+	    if train.associated:
+	      self.setEnabled(True)
+
+  def onBrake(self):
+    self.train.brake()
+	    
+  def onTrainAssociated(self):
+    if self.train.associated:
+      self.setEnabled(True)
+      
+    else:
+      self.setEnabled(False)
+	  
+  def onSpeedChanged(self):
+    if self.train.speed != int(self.dGreitis.value()):
+      self.dGreitis.setValue(self.train.speed)
+	  
+  def onDebugMsg(self, msg):
+    self.infoText.appendPlainText(msg)
+
+  def onRfidRead(self, rfid):
+    self.infoText.appendPlainText("RFID: " + rfid + "\n")
+      
+  def onRssiUpdated(self):
+	  self.pSignalas.setProperty("value", -91 + self.train.rssi)
+	  
+  def onAssocChanged(self):
+	  if not self.train.associated:
+		  self.setEnabled(False)
+		  self.pSignalas.setValue(-91)
+	  else:
+		  self.setEnabled(True)
+		  
+  def onTrainSpeedChanged(self, speed):
+	  self.lSpeed.setText("%s" % speed)
+	  
+  def onSetSpeed(self, speed):
+	  self.train.setSpeed(speed)
+	      
 		
 		
 from urlparse import urlparse, parse_qs
 from BaseHTTPServer import BaseHTTPRequestHandler
+import threading
 
 class Handler(BaseHTTPRequestHandler):
 
+  authorized = []
+  lock = threading.Lock()
+
   def do_GET(self):
+  
+    #if not self.client_address[0] in Handler.authorized:
+      #msgBox = QMessageBox()
+      #msgBox.setText("Client %s wants to connect, allow?" % self.client_address[0])
+      #msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+      #msgBox.setDefaultButton(QMessageBox.No)
+      #ret = msgBox.exec_()
+      #if ret == QMessageBox.Yes:
+	#Handler.authorized.append(self.client_address[0])
+      #else:
+	#self.send_response(403)
+	#self.send_header("Content-type", "text/plain")
+	#self.send_header("Connection", "close")
+	#self.end_headers()	
+	#return
   
     self.send_response(200)
     self.send_header("Content-type", "text/json")
     self.send_header("Connection", "close")
     self.end_headers()
     
-    print self.path
     data = parse_qs(urlparse(self.path).query)
-    print data
     
     json_data = {}
     
     json_data["traukiniai"] = {}
     
-    if self.path == "/?getstatus":
     
+    
+    if self.path == "/?getstatus":
+      Handler.lock.acquire()
+      
       c = 0
       for t in app.trains:
 	t = t.train
@@ -331,20 +337,22 @@ class Handler(BaseHTTPRequestHandler):
 	 
       json_data["iesmai"] = {}
 	
-      for iesmas in app.stendas.iesmai.values():
+      for name in sorted(app.stendas.iesmai.keys()):
+	iesmas = app.stendas.iesmai[name]
 	json_data["iesmai"]["%X.%d" % (iesmas.address, iesmas.port)] = {
 	    "state": int(iesmas.state)
 	  }
       
-	
-      self.wfile.write(json.dumps(json_data))
+      Handler.lock.release()
+      self.wfile.write(json.dumps(json_data, sort_keys=True))
  
       self.wfile.write("\n")
       
     else:
+      Handler.lock.acquire()
+      
       if "switch" in data and "state" in data:
 	app.stendas.iesmai[data["switch"][0]].state = int(data["state"][0])
-      
       
       if "tr" in data and "speed" in data:
 	print data["tr"]
@@ -355,10 +363,14 @@ class Handler(BaseHTTPRequestHandler):
 	if t.train:
 	
 	  t.train.setSpeed(int(data["speed"][0]))
-    
+      
+      Handler.lock.release()
       
     self.wfile.write("")
     self.wfile.close()
+    
+  def log_message(self, format, *args):
+    return
 
 class App(QApplication):
 	def __init__(self):
@@ -405,7 +417,7 @@ class App(QApplication):
 		self.iesmai = []
 		
 		
-		for iesmas in self.stendas.iesmai.values():
+		for name, iesmas in sorted(self.stendas.iesmai.items()):
 		  self.iesmai.append( IesmoMygtukas(iesmas) )
 		
 		cnt = 0
@@ -419,10 +431,13 @@ class App(QApplication):
 		
 		self.prev_speed = 0
 		
-		self.startTimer(0)
+		self.polltm = self.startTimer(0)
+		self.calibtm  = self.startTimer(5*60*1000)
 		
 		
 		self.httpserver = HttpServer(Handler)
+		
+		self.synctime = time.time()
 	      
 		
 	def on_speed_changed(self, slider):
@@ -432,8 +447,19 @@ class App(QApplication):
 
 		
 	def timerEvent(self, event):
+	  if event.timerId() == self.polltm:
+	      self.radio.poll()
+	      
+	      if time.time() - self.synctime > 10:
 		
-		self.radio.poll()
+		print "--CALIBRATION--"
+		self.radio.getDriver().rxOff()
+		self.radio.getDriver().rxOn()		
+		
+		self.synctime = time.time()
+	  
+
+
 		
 
 

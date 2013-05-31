@@ -152,6 +152,18 @@ public:
 		Radio::stdResponseHandler(frm, request, data, len);
 	}
 
+	void responseHandler(MacFrame &frm, Request& request,
+			uint8_t *data, uint8_t len) {
+
+		std::string str((char*)data, (int)len);
+		if (auto f = this->get_override("responseHandler")){
+			f(frm, request, str); // *note*
+			return;
+		}
+
+		Radio::responseHandler(frm, request, data, len);
+	}
+
 	void stdRequestHandler(MacFrame& frm,
 			uint16_t src_address, uint8_t requestId, uint8_t* data, uint8_t len) {
 
@@ -271,6 +283,10 @@ BOOST_PYTHON_MODULE(usbradio)
 			.add_property("data_pending", FrameHdr_data_pending)
 			.def_readonly("req_id", &FrameHdr::req_id);
 
+	class_<Request>("Request")
+		.add_property("address", &Request::address)
+		.add_property("request_id", &Request::request_id);
+
 	class_<RadioWrapper, boost::noncopyable>("TinyRadioProtocol")
 			.def("init", &Radio::init)
 
@@ -299,6 +315,7 @@ BOOST_PYTHON_MODULE(usbradio)
 			.def("prepareBeacon", &RadioWrapper::prepareBeacon)
 			.def("stdRequestHandler", &RadioWrapper::stdRequestHandler)
 			.def("stdResponseHandler", &RadioWrapper::stdResponseHandler)
+			.def("responseHandler", &RadioWrapper::responseHandler)
 
 			.def("poll", &Radio::poll)
 

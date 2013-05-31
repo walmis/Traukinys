@@ -8,6 +8,9 @@ count = 0
 from PySide.QtCore import *
 from PySide.QtGui import *
 
+from WirelessUART import WirelessUART
+from RFIDTag import RFIDTag
+
 import json
 
 class Irenginys(QObject):
@@ -27,13 +30,15 @@ class Irenginys(QObject):
   def send(self, data):
     self.data = data
     
-    if Stendas.app.serial:
+    serial = Stendas.inst.serial
+    
+    if serial and serial.associated:
       print "send", self.address, data
-      Stendas.app.serial.write("\x55")
-      Stendas.app.serial.write(chr(self.address))
-      Stendas.app.serial.write(chr(data))
       
-      
+      serial.write("\x55")
+      serial.write(chr(self.address))
+      serial.write(chr(data))
+         
     else:
       print "Nera wireless serial interfeiso!!!"
     
@@ -41,6 +46,8 @@ class Ruozas(QObject):
   def __init__(self, nr, slow=False):
     QObject.__init__(self)
     self._busy = False
+    self._train = None
+    
     self.nr = nr
     self.slow = slow
     
@@ -222,22 +229,16 @@ class Sviesoforas2(Irenginys):
   #stateChanged = Signal()
   #state = Property(int, getState, setState, notify=stateChanged)
     
-class RFIDTag(QObject):
-  def __init__(self, id, trigger):
-    QObject.__init__(self)
-    
-    
-    
-  tagPassed = Signal()
+
 
 class Sviesoforas4(Irenginys):
   class State:
-    ZALIA = 0
-    RAUDONA = 1
-    GELTONA = 2 #geltona virsutine
-    GELTONA_MIRKS = 3 #geltona virsutine mirksinti
-    GELTONA2 = 4 #dvi geltonos sviecia
-    GELTONA2_MIRKS1 = 5 #apatine geltona sviecia, virsutine mirksi
+    ZALIA = 0 #2 laisvi, iesmas tiesiai
+    RAUDONA = 1 #0 laisvu
+    GELTONA = 2 #geltona virsutine, 1 laisvas, iesmas tiesiai
+    GELTONA_MIRKS = 3 #geltona virsutine mirksinti, 2 laisvi iesmas tiesiai, SLOW
+    GELTONA2 = 4 #dvi geltonos sviecia, 1 laisvas, iesmas i sona
+    GELTONA2_MIRKS1 = 5 #apatine geltona sviecia, virsutine mirksi, 2 laisvi, iesmas i sona
     
   def __init__(self, address, iesmas, ruozas=None, evalfn=None):
     Irenginys.__init__(self, address)
@@ -272,7 +273,11 @@ class Sviesoforas4(Irenginys):
 	return
     
     if self.iesmas.in_ruozas == self.ruozas:
-      pass
+    
+      if self.iesmas.state:
+	self.state = Sviesoforas4.State.GELTONA2_MIRKS1  
+	return
+    
     elif self.ruozas == self.iesmas.ruozas1 and self.iesmas.state == 1:
       self.state = Sviesoforas4.State.RAUDONA
       return
@@ -280,6 +285,9 @@ class Sviesoforas4(Irenginys):
     elif self.ruozas == self.iesmas.ruozas2 and self.iesmas.state == 0:
       self.state = Sviesoforas4.State.RAUDONA
       return
+    
+    #jei iesmas perjungtas
+
     
     self.state = Sviesoforas4.State.ZALIA
     
@@ -332,10 +340,16 @@ class Sviesoforas3(Irenginys):
                     
 class Stendas(QObject):
   app = None
+  inst = None
   def __init__(self, app):
     QObject.__init__(self)
     
     Stendas.app = app
+    Stendas.inst = self
+    self.serial = None
+    
+    app.radio.signals.deviceAdded.connect(self.onDeviceAdded)
+    #app.serial.associationChanged.connect(self.onSerialAssoc)
     
     self.ruozai = [
       Ruozas(0),
@@ -372,10 +386,19 @@ class Stendas(QObject):
 	"F2.0": Iesmas(0xF2, 0, self.ruozai[0], self.ruozai[18], self.ruozai[16]),
 	"F2.1": Iesmas(0xF2, 1, self.ruozai[9], self.ruozai[19], self.ruozai[20]),
 	
+	"F3.0": Iesmas(0xF3, 0, self.ruozai[11], self.ruozai[12], self.ruozai[13]),
+	"F3.1": Iesmas(0xF3, 1, self.ruozai[10], self.ruozai[14], self.ruozai[11]),
+	
 	"F4.0": Iesmas(0xF4, 0, self.ruozai[6], self.ruozai[9], self.ruozai[8]),
 	
 	
     }
+    
+    self.rfid = {
+	"1" : RFIDTag("0492d8c6ca1f26").addAction(lambda train: train.stop() if self.sviesoforai[0x21].state == Sviesoforas4.State.RAUDONA else None),
+	  
+	#"2" : RfidTag("")
+      }
     
     self.iesmai["F2.0.0"] = SlaveIesmas(self.iesmai["F2.0"], 0, self.ruozai[19], self.ruozai[18], self.ruozai[15])
     self.iesmai["F2.0.1"] = SlaveIesmas(self.iesmai["F2.0"], 1, self.ruozai[8],  self.ruozai[17], self.ruozai[16])
@@ -392,7 +415,7 @@ class Stendas(QObject):
       0x08 : Sviesoforas2(0x08, self.iesmai["F0.1"], invert=False),
       0x0E : Sviesoforas2(0x0E, self.iesmai["F0.0"], invert=False),
       
-      0x23 : Sviesoforas4(0x23, self.iesmai["F0.0"]),
+      0x23 : Sviesoforas4(0x23, self.iesmai["F0.0"], self.ruozai[6]),
       
       0x17 : Sviesoforas4(0x17, self.iesmai["F1.1"], self.ruozai[3], 
 			  lambda: Sviesoforas4.State.RAUDONA if self.iesmai["F1.0"].state else None).listen(self.iesmai["F1.0"]),
@@ -402,23 +425,36 @@ class Stendas(QObject):
       
       0x25 : Sviesoforas4(0x25, self.iesmai["F1.0"], self.ruozai[1]),
       
-      0x24 : Sviesoforas4(0x24, self.iesmai["F2.0.2"]),
-      0x1A : Sviesoforas4(0x1A, self.iesmai["F2.0"]),
+      0x24 : Sviesoforas4(0x24, self.iesmai["F2.0.2"], self.ruozai[10]),
+      0x1A : Sviesoforas4(0x1A, self.iesmai["F2.0"], self.ruozai[0]),
        
-      0x1B : Sviesoforas4(0x1B, self.iesmai["F2.0.0"]),
-      0x20 : Sviesoforas4(0x20, self.iesmai["F2.0.1"]),
+      0x1B : Sviesoforas4(0x1B, self.iesmai["F2.0.0"], self.ruozai[19]),
+      0x20 : Sviesoforas4(0x20, self.iesmai["F2.0.1"], self.ruozai[8]),
       
       0x22 : Sviesoforas4(0x22, self.iesmai["F4.0"], self.ruozai[8]),
       0x3B : Sviesoforas4(0x3B, self.iesmai["F4.0"], self.ruozai[9]),
+      
+      0x0D : Sviesoforas2(0x0D, self.iesmai["F3.1"]),
+      
+      0x3A : Sviesoforas4(0x3A, self.iesmai["F0.1"], self.ruozai[7]),
+      
+      #0x0F : Sviesoforas2(0x0D, self.iesmai["F3.1"]),
     }
 
     
     for r in self.ruozai:
       print r
     print self.iesmai["F0.0"]
-    self.iesmai["F0.0"].setState(0)
-    self.iesmai["F0.1"].setState(0)
+
     
+  def onDeviceAdded(self, device):
+    if type(device) == WirelessUART:
+      self.serial = device
+   #   self.serial.associationChanged.connect(self.onUartAssoc)
+      
+  #def 
+    
+    #self.sviesoforai[0x3A].setState(Sviesoforas4.State.GELTONA2_MIRKS1)
     #self.startTimer(1000)
     
     #print self.iesmai["F0.0"]
@@ -429,11 +465,8 @@ class Stendas(QObject):
     #  time.sleep(2)
     #  state = not state
     #  self.iesmai["F0.1"].setState(state)
-      
-  def timerEvent(self, event):
-      print "tm--------------------"
-      self.state = not self.state
-      self.iesmai["F0.1"].setState(self.state)  
+
+ 
     #print self.iesmai["F0.0"]
     #print self.iesmai["F0.0"].next()
     #print self.iesmai["F0.0"].next().next()

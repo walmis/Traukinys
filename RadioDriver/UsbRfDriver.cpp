@@ -157,7 +157,7 @@ void UsbRfDriver::txRx() {
 
 		res = libusb_bulk_transfer(device, inBulk, (uint8_t*)&data, sizeof(RfFrameData), &read, 0);
 		if(res == 0) {
-			XPCC_LOG_INFO .printf("read frame %d\n", read);
+			//XPCC_LOG_INFO .printf("read frame %d\n", read);
 
 			std::shared_ptr<HeapFrame> frm(new HeapFrame);
 
