@@ -99,7 +99,9 @@ class App(QApplication):
 	def onClicked(self):
 	  print "c"
 	  
-	  str = "qwertyuiopasdfghjklzxcvbnm\n"*3
+	  #self.radio.sendData(0xFFFF, "test")
+	   
+	  str = "qwertyuiopasdfghjklzxcvbnm\n"*6
 	  
 	  self.uart.write(str)
 		
@@ -110,7 +112,9 @@ class App(QApplication):
 		
 		
 	def timerEvent(self, event):
-	  self.radio.poll()	
+	  self.radio.poll()
+	  
+	 
 		
 		
 		

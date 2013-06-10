@@ -81,7 +81,7 @@ private:
 
 	xpcc::atomic::Queue<HeapFrame, 10> rxFrames;
 
-	uint8_t data_pos;
+	volatile uint8_t data_pos;
 
 	static USBInterface* self;
 };

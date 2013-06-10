@@ -432,7 +432,6 @@ class App(QApplication):
 		self.prev_speed = 0
 		
 		self.polltm = self.startTimer(0)
-		self.calibtm  = self.startTimer(5*60*1000)
 		
 		
 		self.httpserver = HttpServer(Handler)
@@ -447,16 +446,7 @@ class App(QApplication):
 
 		
 	def timerEvent(self, event):
-	  if event.timerId() == self.polltm:
-	      self.radio.poll()
-	      
-	      if time.time() - self.synctime > 10:
-		
-		print "--CALIBRATION--"
-		self.radio.getDriver().rxOff()
-		self.radio.getDriver().rxOn()		
-		
-		self.synctime = time.time()
+	  self.radio.poll()
 	  
 
 

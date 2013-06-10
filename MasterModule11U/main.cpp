@@ -21,7 +21,37 @@ xpcc::lpc::Uart1 uart(115200);
 xpcc::IODeviceWrapper<lpc::Uart1> device;
 xpcc::log::Logger xpcc::log::debug(device);
 
-void fault_handler() {
+enum { r0, r1, r2, r3, r12, lr, pc, psr};
+
+extern "C" void HardFault_Handler(void)
+{
+  asm volatile("MRS r0, MSP;"
+		       "B Hard_Fault_Handler");
+}
+
+extern "C"
+void Hard_Fault_Handler(uint32_t stack[]) {
+
+	//register uint32_t* stack = (uint32_t*)__get_MSP();
+
+	ledGreen::set(0);
+	ledRed::set();
+
+	XPCC_LOG_DEBUG .printf("Hard Fault\n");
+
+	XPCC_LOG_DEBUG .printf("r0  = 0x%08x\n", stack[r0]);
+	XPCC_LOG_DEBUG .printf("r1  = 0x%08x\n", stack[r1]);
+	XPCC_LOG_DEBUG .printf("r2  = 0x%08x\n", stack[r2]);
+	XPCC_LOG_DEBUG .printf("r3  = 0x%08x\n", stack[r3]);
+	XPCC_LOG_DEBUG .printf("r12 = 0x%08x\n", stack[r12]);
+	XPCC_LOG_DEBUG .printf("lr  = 0x%08x\n", stack[lr]);
+	XPCC_LOG_DEBUG .printf("pc  = 0x%08x\n", stack[pc]);
+	XPCC_LOG_DEBUG .printf("psr = 0x%08x\n", stack[psr]);
+
+	while(1);
+}
+
+extern "C" void fault_handler() {
 	ledGreen::set(0);
 	ledRed::set();
 }
@@ -84,7 +114,6 @@ void idle() {
 	}
 
 	__WFI();
-
 }
 
 

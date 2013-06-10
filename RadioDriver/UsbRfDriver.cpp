@@ -153,8 +153,6 @@ void UsbRfDriver::txRx() {
 	} while(res == 0);
 
 	while(connected && device) {
-
-
 		res = libusb_bulk_transfer(device, inBulk, (uint8_t*)&data, sizeof(RfFrameData), &read, 0);
 		if(res == 0) {
 			//XPCC_LOG_INFO .printf("read frame %d\n", read);
@@ -172,6 +170,9 @@ void UsbRfDriver::txRx() {
 				//XPCC_LOG_DEBUG .printf("f %x\n", frm->data[2]);
 				rx_frames.push(frm);
 				sem_post(&wait_sem);
+				//int value;
+				//sem_getvalue(&wait_sem, &value);
+				//XPCC_LOG_DEBUG .printf("sem_post value %d\n", value);
 			}
 
 		} else if(res == LIBUSB_ERROR_NO_DEVICE) {
@@ -188,13 +189,14 @@ void UsbRfDriver::frameDispatcher() {
 	while(connected) {
 		//wait for new frames
 		sem_wait(&wait_sem);
-		//XPCC_LOG_DEBUG .printf("frames pending %d\n", rx_frames.stored());
+		//int value;
+		//sem_getvalue(&wait_sem, &value);
+		//XPCC_LOG_DEBUG .printf("frames pending %d (sem value %d)\n", rx_frames.stored(), value);
 
-		if(rxHandler) {
+		if(rxHandler)
 			rxHandler();
-		} else {
-			rx_frames.pop();
-		}
+
+		rx_frames.pop();
 	}
 }
 
@@ -228,7 +230,8 @@ bool UsbRfDriver::readFrame(Frame& frame) {
 		return false;
 
 	auto f = rx_frames.get();
-	rx_frames.pop();
+
+	//XPCC_LOG_DEBUG .printf("Read frame (left %d)\n", rx_frames.stored());
 
 	stats.rx_frames++;
 	stats.rx_bytes += f->data_len;

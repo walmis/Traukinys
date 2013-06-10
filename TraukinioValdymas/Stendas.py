@@ -33,7 +33,7 @@ class Irenginys(QObject):
     serial = Stendas.inst.serial
     
     if serial and serial.associated:
-      print "send", self.address, data
+      #print "send", self.address, data
       
       serial.write("\x55")
       serial.write(chr(self.address))

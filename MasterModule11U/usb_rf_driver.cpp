@@ -153,16 +153,23 @@ void USBInterface::handleTick() {
 			rf230drvr.rxOff();
 			break;
 
-		case SEND_FRAME:
+		case SEND_FRAME: {
+			NVIC_DisableIRQ(USB_IRQn);
 
 			txBlinker.blink();
 
 			funcReturn<RadioStatus>(rf230drvr.sendFrame(true));
 
 			data_pos = 0;
+
+			NVIC_EnableIRQ(USB_IRQn);
+
 			break;
+		}
 
 		case UPLOAD_SEND_FRAME: {
+			NVIC_DisableIRQ(USB_IRQn);
+
 			Frame frm;
 			frm.data = frame_data;
 			frm.data_len = data_pos;
@@ -175,6 +182,8 @@ void USBInterface::handleTick() {
 			XPCC_LOG_DEBUG.printf("send len:%d res:%d\n", frm.data_len, res);
 
 			data_pos = 0;
+
+			NVIC_EnableIRQ(USB_IRQn);
 			break;
 		}
 		case CLEAR_FRAME:
@@ -266,9 +275,9 @@ bool USBInterface::EP2_OUT_callback() {
 	//XPCC_LOG_DEBUG.printf("OUT2\n");
 	if (data_pos < 128) {
 		uint32_t read;
-		readEP(EPBULK_OUT, frame_data + data_pos, &read, 128 - data_pos);
+		readEP(EPBULK_OUT, frame_data + data_pos, &read, sizeof(frame_data) - data_pos);
 		data_pos += read;
-		//XPCC_LOG_DEBUG.printf("Read %d\n", read);
+		XPCC_LOG_DEBUG.printf("Read %d %d\n", read, data_pos);
 	}
 	readStart(EPBULK_OUT, 64);
 	return true;
