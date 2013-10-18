@@ -268,7 +268,7 @@ BOOST_PYTHON_MODULE(usbradio)
 	class_<NodeACL>("NodeACL")
 			.def_readonly("address", &NodeACL::address)
 			.def_readonly("last_activity", &NodeACL::last_activity)
-			.def_readonly("associated", &NodeACL::associated);
+			.def("isAssociated", &NodeACL::isAssociated);
 
 	class_<UsbRfDriver>("UsbRfDriver")
 			.def("rxOn", &UsbRfDriver::rxOn)
@@ -301,6 +301,7 @@ BOOST_PYTHON_MODULE(usbradio)
 			.def("sendData", &Radio::sendData)
 			.def("send", &Radio::send, send_overloads())
 			.def("sendRequest", &Radio::sendRequest)
+			.def("ping", &Radio::ping)
 
 			.def("sendResponse", sendResponse)
 

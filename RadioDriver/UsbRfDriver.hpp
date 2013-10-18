@@ -26,6 +26,14 @@ struct Stats {
 	uint32_t rx_frames;
 };
 
+struct DeviceState {
+	bool initialized;
+	uint16_t address;
+	uint16_t panId;
+	bool rxOn;
+	uint8_t channel;
+};
+
 typedef int None;
 
 class USBException : public std::exception {
@@ -62,13 +70,11 @@ public:
 	uint16_t getShortAddress();
 
 	void setPanId(uint16_t panId);
-
 	uint16_t getPanId();
 
 	void setRxFrameHandler(FrameHandler func);
 
 	void rxOn();
-
 	void rxOff();
 
 	RadioStatus sendFrame(bool blocking = false);

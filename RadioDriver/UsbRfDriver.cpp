@@ -179,8 +179,9 @@ void UsbRfDriver::txRx() {
 			XPCC_LOG_INFO .printf("Disconnected\n");
 			connected = false;
 			libusb_close(device);
+			device = 0;
 		} else {
-			XPCC_LOG_ERROR .printf("libusb_bulk_transfer: %s\n", libusb_error_name(res));
+			XPCC_LOG_ERROR .printf("txRx: libusb_bulk_transfer: %s\n", libusb_error_name(res));
 		}
 	}
 }
