@@ -12,10 +12,11 @@ typedef void (*FrameHandler)();
 
 #include "UsbRfProtocol.hpp"
 #include <xpcc/driver/connectivity/wireless/mac802.15.4/mac.hpp>
+
+#include "Semaphore.hpp"
 #include <libusb.h>
-#include <thread>
+
 #include <time.h>
-#include <semaphore.h>
 #include <exception>
 #include <string>
 
@@ -89,13 +90,13 @@ public:
 private:
 	void connect();
 	void reconnect();
-	std::thread* connect_th;
+	boost::thread* connect_th;
 
 	void txRx();
-	std::thread* data_th;
+	boost::thread* data_th;
 
 	void frameDispatcher();
-	sem_t wait_sem;
+	Semaphore wait_sem;
 
 	FrameHandler rxHandler;
 

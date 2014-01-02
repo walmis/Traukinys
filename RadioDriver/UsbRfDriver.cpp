@@ -5,14 +5,12 @@
  *      Author: walmis
  */
 
+#include <xpcc/debug.hpp>
+
 #include "UsbRfDriver.hpp"
 #include <assert.h>
-#include <thread>
-
 #include <unistd.h>
-
 #include "UsbRfProtocol.hpp"
-
 
 UsbRfDriver::UsbRfDriver() {
 	int result;
@@ -20,8 +18,6 @@ UsbRfDriver::UsbRfDriver() {
 	rxHandler = 0;
 	connect_th = 0;
 	connected = false;
-
-	sem_init(&wait_sem, 0, 0);
 
 	result = libusb_init(&usb_ctx);
 	if(result != 0) {
@@ -48,7 +44,7 @@ void UsbRfDriver::initUSB(uint16_t vendor, uint16_t product) {
 
 	connect();
 
-	connect_th = new std::thread(&UsbRfDriver::reconnect, this);
+	connect_th = new boost::thread(&UsbRfDriver::reconnect, this);
 
 }
 
@@ -72,14 +68,12 @@ void UsbRfDriver::connect() {
 		}
 		connected = true;
 
-
-
 		XPCC_LOG_INFO.printf("USB: Device successfully initialized\n");
 
-		std::thread th(&UsbRfDriver::frameDispatcher, this);
+		boost::thread th(&UsbRfDriver::frameDispatcher, this);
 		th.detach();
 
-		data_th = new std::thread(&UsbRfDriver::txRx, this);
+		data_th = new boost::thread(&UsbRfDriver::txRx, this);
 
 		init();
 	}
@@ -169,7 +163,7 @@ void UsbRfDriver::txRx() {
 
 				//XPCC_LOG_DEBUG .printf("f %x\n", frm->data[2]);
 				rx_frames.push(frm);
-				sem_post(&wait_sem);
+				wait_sem.notify();
 				//int value;
 				//sem_getvalue(&wait_sem, &value);
 				//XPCC_LOG_DEBUG .printf("sem_post value %d\n", value);
@@ -189,7 +183,7 @@ void UsbRfDriver::txRx() {
 void UsbRfDriver::frameDispatcher() {
 	while(connected) {
 		//wait for new frames
-		sem_wait(&wait_sem);
+		wait_sem.wait();
 		//int value;
 		//sem_getvalue(&wait_sem, &value);
 		//XPCC_LOG_DEBUG .printf("frames pending %d (sem value %d)\n", rx_frames.stored(), value);

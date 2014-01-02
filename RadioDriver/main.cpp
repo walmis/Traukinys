@@ -7,7 +7,7 @@
 
 
 #include <xpcc/architecture.hpp>
-#include <xpcc/workflow.hpp>
+#include <xpcc/processing.hpp>
 
 #include "UsbRfDriver.hpp"
 #include "PyInterface.hpp"

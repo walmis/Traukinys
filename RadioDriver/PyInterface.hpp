@@ -25,7 +25,6 @@ public:
 	typedef TinyRadioProtocol<UsbRfDriver, AES_CCM_32> Base;
 	Radio() : TinyRadioProtocol<UsbRfDriver, AES_CCM_32>(driver) {
 		driver.initUSB();
-		sem_init(&sem, 0, 0);
 	}
 
 	void init() {
@@ -37,7 +36,7 @@ public:
 		//XPCC_LOG_DEBUG .printf("rx handler\n");
 		self->rxHandler();
 
-		sem_post(&(static_cast<Radio*>(self)->sem));
+		static_cast<Radio*>(self)->sem.notify();
 	}
 
 	boost::python::list listNodes() {
@@ -51,12 +50,7 @@ public:
 	}
 
 	void poll() {
-		timespec tm;
-		clock_gettime(CLOCK_REALTIME, &tm);
-
-		tm.tv_nsec += 1000*1000;
-		sem_timedwait(&sem, &tm);
-
+		sem.timedWait(1000);
 		self->handleTick();
 	}
 
@@ -75,13 +69,12 @@ public:
 
 protected:
 	UsbRfDriver driver;
-	sem_t sem;
+	Semaphore sem;
 };
 
 
 class RadioWrapper : public Radio, public wrapper<Radio> {
 public:
-
 
 	bool frameHandler(Frame& rxFrame) override {
 		if (auto f = this->get_override("frameHandler"))
