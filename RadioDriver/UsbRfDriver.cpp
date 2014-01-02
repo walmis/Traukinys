@@ -16,7 +16,11 @@ UsbRfDriver::UsbRfDriver() {
 	int result;
 
 	rxHandler = 0;
+
 	connect_th = 0;
+	dispatcher_th = 0;
+	io_th = 0;
+
 	connected = false;
 
 	result = libusb_init(&usb_ctx);
@@ -27,8 +31,24 @@ UsbRfDriver::UsbRfDriver() {
 
 UsbRfDriver::~UsbRfDriver() {
 	libusb_exit(usb_ctx);
-	if(connect_th)
+	usb_ctx = 0;
+	device = 0;
+	connected = false;
+
+	//XPCC_LOG_DEBUG .printf("destroy\n");
+	if(connect_th) {
+		connect_th->join();
 		delete connect_th;
+	}
+	if(io_th) {
+		//io_th->join();
+		delete io_th;
+	}
+	if(dispatcher_th) {
+		dispatcher_th->join();
+		delete dispatcher_th;
+	}
+
 }
 
 void UsbRfDriver::initUSB(uint16_t vendor, uint16_t product) {
@@ -43,8 +63,8 @@ void UsbRfDriver::initUSB(uint16_t vendor, uint16_t product) {
 	this->product = product;
 
 	connect();
-
-	connect_th = new boost::thread(&UsbRfDriver::reconnect, this);
+	if(!connect_th)
+		connect_th = new boost::thread(&UsbRfDriver::reconnect, this);
 
 }
 
@@ -70,17 +90,15 @@ void UsbRfDriver::connect() {
 
 		XPCC_LOG_INFO.printf("USB: Device successfully initialized\n");
 
-		boost::thread th(&UsbRfDriver::frameDispatcher, this);
-		th.detach();
-
-		data_th = new boost::thread(&UsbRfDriver::txRx, this);
+		dispatcher_th = new boost::thread(&UsbRfDriver::frameDispatcher, this);
+		io_th = new boost::thread(&UsbRfDriver::txRx, this);
 
 		init();
 	}
 }
 
 void UsbRfDriver::reconnect() {
-	while(1) {
+	while(usb_ctx) {
 
 		if(!connected) {
 			connect();
@@ -181,17 +199,19 @@ void UsbRfDriver::txRx() {
 }
 
 void UsbRfDriver::frameDispatcher() {
-	while(connected) {
+	while(connected && device) {
 		//wait for new frames
-		wait_sem.wait();
-		//int value;
-		//sem_getvalue(&wait_sem, &value);
-		//XPCC_LOG_DEBUG .printf("frames pending %d (sem value %d)\n", rx_frames.stored(), value);
+		if(wait_sem.timedWait(1000*500)) {
+			//int value;
+			//sem_getvalue(&wait_sem, &value);
+			//XPCC_LOG_DEBUG .printf("frames pending %d\n", rx_frames.stored());
 
-		if(rxHandler)
-			rxHandler();
+			if(rxHandler)
+				rxHandler();
 
-		rx_frames.pop();
+			rx_frames.pop();
+		}
+		//XPCC_LOG_DEBUG .printf("frames pending %d\n", rx_frames.stored());
 	}
 }
 

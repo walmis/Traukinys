@@ -90,10 +90,12 @@ public:
 private:
 	void connect();
 	void reconnect();
+
 	boost::thread* connect_th;
+	boost::thread* dispatcher_th;
+	boost::thread* io_th;
 
 	void txRx();
-	boost::thread* data_th;
 
 	void frameDispatcher();
 	Semaphore wait_sem;

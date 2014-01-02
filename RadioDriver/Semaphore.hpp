@@ -43,15 +43,16 @@ public:
             condition_.wait(lock);
         --count_;
     }
-    void timedWait(uint32_t microSeconds) {
+    bool timedWait(uint32_t microSeconds) {
     	boost::mutex::scoped_lock lock(mutex_);
     	boost::system_time tm = boost::get_system_time() + boost::posix_time::microseconds(microSeconds);
         while(!count_) {
         	if(!condition_.timed_wait(lock, tm)) {
-        		return;
+        		return false;
         	}
         }
         --count_;
+        return true;
     }
 };
 

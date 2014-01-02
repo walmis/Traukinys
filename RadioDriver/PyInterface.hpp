@@ -24,10 +24,11 @@ class Radio : public TinyRadioProtocol<UsbRfDriver, AES_CCM_32> {
 public:
 	typedef TinyRadioProtocol<UsbRfDriver, AES_CCM_32> Base;
 	Radio() : TinyRadioProtocol<UsbRfDriver, AES_CCM_32>(driver) {
-		driver.initUSB();
+
 	}
 
 	void init() {
+		driver.initUSB();
 		TinyRadioProtocol<UsbRfDriver, AES_CCM_32>::init();
 		driver.setRxFrameHandler(rxHandler);
 	}
