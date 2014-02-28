@@ -6,10 +6,11 @@ class WirelessDevice(QObject):
 
   rssiUpdated = Signal()
 
-  def __init__(self, address):
+  def __init__(self, address, radio):
     QObject.__init__(self)
     self.address = address
     self.associated = False
+    self.radio = radio
     
     self.rssi = 0
     self.lqi = 0

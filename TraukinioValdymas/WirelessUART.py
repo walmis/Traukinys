@@ -4,8 +4,8 @@ from WirelessDevice import WirelessDevice
 
 class WirelessUART(WirelessDevice):
   
-  def __init__(self, address):
-    WirelessDevice.__init__(self, address)
+  def __init__(self, address, radio):
+    WirelessDevice.__init__(self, address, radio)
     self.startTimer(10)
     
     self.tx_buffer = array('B')

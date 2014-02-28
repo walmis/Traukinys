@@ -1,33 +1,26 @@
 from PySide.QtCore import *
 
 class RFIDTag(QObject):
-  tags = []
   
-  def __init__(self, id):
+  def __init__(self, id, road = None, next_switch = None):
     QObject.__init__(self)
     self.actions = []
     
     self.id = id
+    self.road = road
+    self.node = next_switch
     
-    RFIDTag.tags.append(self)
+  def __repr__(self):
+    return "<RFIDTag(%s, %s, %s)>\n" % (self.id, self.node, self.road)
     
   def addAction(self, func):
     self.actions.append(func)
-    
     return self
     
   def _trigger(self, train):
     self.triggered.emit(train)
     
     for action in self.actions:
-      action(train)
-    
-  @staticmethod
-  def trigger(tagid, train):
-    print "trigger", tagid, train
-    for tag in RFIDTag.tags:
-      if tag.id == tagid:
-	tag._trigger(train)
-    
+      action(train)    
     
   triggered = Signal(object) 

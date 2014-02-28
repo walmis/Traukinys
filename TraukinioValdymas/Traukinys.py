@@ -11,7 +11,7 @@ from httpserver import HttpServer
 
 from WirelessDevice import WirelessDevice
 from WirelessUART import WirelessUART
-from RFIDTag import RFIDTag
+from Stendas.RFIDTag import RFIDTag
 
 import time
 
@@ -19,135 +19,62 @@ from traukinys_ui import Ui_Traukinys
 
 app = None
 
-import Stendas
+from Stendas import Stendas
 
-class Train(WirelessDevice):
-  class Cmd:
-    SET_SPEED = 16
-    STOP =17
-    BRAKE =18
-    GET_SPEED=19
-
-    GPIO_DIR=20
-    GPIO_READ=21
-    GPIO_SET=22
-
-    SPEED_REPORT=23
-    RFID_READ = 24
-    DEBUG_MSG = 25
-	
-  def __init__(self, address):
-    WirelessDevice.__init__(self, address)
-    self.speed = 0
-    self.currentSpeed = 0
-    
-    self.associationChanged.connect(self.onAssocChanged)
-    
-    self.prev_rfid = None
-  
-  currentSpeedChanged = Signal(int)
-  speedChanged = Signal(int)
-  beaconReceived = Signal()
-  onRfidRead = Signal(str)
-  onDebugMsg = Signal(str)
-	  
-  def onAssocChanged(self):
-    if self.associated:
-      #restore last used speed
-      self.setSpeed(self.speed)
-      
-      for train in app.trains:
-	if train.id == self.beacon_data:
-	  train.assign(self)
-	  
-  def setSpeed(self, speed):
-    self.radio.sendRequest(self.address, Train.Cmd.SET_SPEED, struct.pack("b", speed), int(usbradio.TxFlags.TX_ENCRYPT | usbradio.TxFlags.TX_ACKREQ))
-    self.speed = speed
-    self.speedChanged.emit(self.speed)
-    
-  def updateSpeed(self):
-    self.radio.sendRequest(self.address, Train.Cmd.GET_SPEED, "", int(usbradio.TxFlags.TX_ENCRYPT | usbradio.TxFlags.TX_ACKREQ))
-  
-  def brake(self):
-    self.radio.sendRequest(self.address, Train.Cmd.BRAKE, "", int(usbradio.TxFlags.TX_ENCRYPT | usbradio.TxFlags.TX_ACKREQ))
-  
-  def stop(self):
-    self.setSpeed(0)
-
-  def onResponse(self, frame, request, data):
-    pass
-
-  def onData(self, frame, header, data):
-	  
-    if header.req_id == Train.Cmd.SPEED_REPORT:
-      self.currentSpeed = struct.unpack("I", data)[0]
-      self.currentSpeedChanged.emit(self.currentSpeed)
-	    
-    elif header.req_id == Train.Cmd.DEBUG_MSG:
-      #print "\033[1;31m", data, "\033[1;m",
-      self.onDebugMsg.emit(data)
-	    
-    elif header.req_id == Train.Cmd.RFID_READ:
-      #print "Read rfid:", data.encode("hex")
-      code = data.encode("hex")
-      self.onRfidRead.emit(code)
-      RFIDTag.trigger(code, self)
-      
-      self.prev_rfid = code
-
-  def onBeacon(self, data):
-    if not self.associated:
-      self.associate()
-
-    self.beaconReceived.emit()
+from Train import Train
 
 
 class RadioDelegate(QObject):
     deviceAdded = Signal(object)
+    deviceEvent = Signal(object)
+    beaconEvent = Signal(int, str, str)
+    
 
 class Radio(usbradio.TinyRadioProtocol):
 	def __init__(self):
 		usbradio.TinyRadioProtocol.__init__(self)
-		#QObject.__init__(self)
 		
 		self.devices = {}
 		
 		self.signals = RadioDelegate()
 	
 	def beaconHandler(self, address, beacon):
-		print "beacon: %04x" % address, str(beacon.name) + " [" + str(beacon.data).encode('hex_codec') + "]"
+		#print "beacon: %04x" % address, str(beacon.name) + " [" + str(beacon.data).encode('hex_codec') + "]"
 		
 		beacon_data = str(beacon.data).encode('hex_codec')
 		
 		name = str(beacon.name).strip("\0")
 		
-		if name == "Traukinys":
-			if not address in self.devices:
-				self.devices[address] =	Train(address)
-				self.devices[address].radio = self
-				self.signals.deviceAdded.emit(self.devices[address])
-			
-			self.devices[address].beacon_name = name
-			self.devices[address].beacon_data = beacon_data
-			self.devices[address].onBeacon(beacon)
-			
-			
-			
-		if name == "WirelessUART" and beacon_data == "0102030405060708":
-			if not address in self.devices:
-				self.devices[address] =	WirelessUART(address)
-				self.devices[address].radio = self
-				self.signals.deviceAdded.emit(self.devices[address])
-			
-			self.devices[address].beacon_name = name
-			self.devices[address].beacon_data = beacon_data
-			self.devices[address].onBeacon(beacon)	
-			
-			
+		if not address in self.devices:
+		  device = WirelessDevice(address, self)
+		  self.devices[address] = device
+
+		device = self.devices[address]
+		device.beacon_name = name
+		device.beacon_data = beacon_data
+		device.onBeacon(beacon)
+		
+		self.signals.beaconEvent.emit(address, name, beacon_data)  
+
+	#create a new device of type: type, which is a subclass of WirelessDevice
+	#return newly created object
+	def addDeviceHandler(self, address, devclass):
+	  if type(self.devices[address]) != devclass:
+	    old = self.devices[address]
+	    
+	    #transform generic WirelessDevice into a specific device
+	    device = self.devices[address] = devclass(address, self)
+	    device.beacon_data = old.beacon_data
+	    device.beacon_name = old.beacon_name
+	    self.signals.deviceAdded.emit(self.devices[address]) 
+	    
+	  return self.devices[address]
+	  
 		
 	def eventHandler(self, address, event):
 		if address in self.devices:
 			self.devices[address].onEvent(event)
+			self.signals.deviceEvent.emit(self.devices[address])
 		
 	def dataHandler(self, frame, header, address, data):
 		if address in self.devices:
@@ -281,10 +208,11 @@ import threading
 class Handler(BaseHTTPRequestHandler):
 
   authorized = []
-  lock = threading.Lock()
+  lock = QMutex()
 
   def do_GET(self):
-  
+    #orig_stdout = sys.stdout
+    #sys.stdout = sys.stderr
     #if not self.client_address[0] in Handler.authorized:
       #msgBox = QMessageBox()
       #msgBox.setText("Client %s wants to connect, allow?" % self.client_address[0])
@@ -299,7 +227,7 @@ class Handler(BaseHTTPRequestHandler):
 	#self.send_header("Connection", "close")
 	#self.end_headers()	
 	#return
-  
+    #print "request", self.client_address[0]
     self.send_response(200)
     self.send_header("Content-type", "text/json")
     self.send_header("Connection", "close")
@@ -311,66 +239,80 @@ class Handler(BaseHTTPRequestHandler):
     
     json_data["traukiniai"] = {}
     
-    
-    
     if self.path == "/?getstatus":
-      Handler.lock.acquire()
-      
-      c = 0
-      for t in app.trains:
-	t = t.train
-	  
-	if t:  
-	  json_data["traukiniai"][str(c)] = {
-	      "signal": -91 + t.rssi,
-	      "speed": t.currentSpeed,
-	      "active": bool(t.associated)
+      Handler.lock.lock()
+      try:
+	c = 0
+	for t in app.trains:
+	  t = t.train
+	    
+	  if t:  
+	    json_data["traukiniai"][str(c)] = {
+		"signal": -91 + t.rssi,
+		"speed": t.currentSpeed,
+		"active": bool(t.associated)
+	      }
+	  else:
+	    json_data["traukiniai"][str(c)] = {
+	      "signal": -91,
+	      "speed": 0,
+	      "active": False
 	    }
-	else:
-	  json_data["traukiniai"][str(c)] = {
-	    "signal": -91,
-	    "speed": 0,
-	    "active": False
-	  }
-	
-	c+=1
-	 
-      json_data["iesmai"] = {}
-	
-      for name in sorted(app.stendas.iesmai.keys()):
-	iesmas = app.stendas.iesmai[name]
-	json_data["iesmai"]["%X.%d" % (iesmas.address, iesmas.port)] = {
-	    "state": int(iesmas.state)
-	  }
+	  
+	  c+=1
+	  
+	json_data["iesmai"] = {}
+	  
+	for name in sorted(app.stendas.iesmai.keys()):
+	  if name.startswith("F"):
+	    iesmas = app.stendas.iesmai[name]
+	    json_data["iesmai"]["%X.%d" % (iesmas.address, iesmas.port)] = {
+		"state": int(iesmas.state)
+	      }
+      except Exception, e:
+	print e
       
-      Handler.lock.release()
+      Handler.lock.unlock()
+      
       self.wfile.write(json.dumps(json_data, sort_keys=True))
- 
       self.wfile.write("\n")
       
     else:
-      Handler.lock.acquire()
-      
-      if "switch" in data and "state" in data:
-	app.stendas.iesmai[data["switch"][0]].state = int(data["state"][0])
-      
-      if "tr" in data and "speed" in data:
-	print data["tr"]
-	print data["speed"]
+      Handler.lock.lock()
+      try:
+	if "switch" in data and "state" in data:
+	  app.stendas.iesmai[data["switch"][0]].setState(int(data["state"][0]))
 	
-	t = app.trains[int(data["tr"][0])]
+	if "tr" in data and "speed" in data:
+	  #print data["tr"]
+	  #print data["speed"]
+	  
+	  t = app.trains[int(data["tr"][0])]
+	  
+	  if t.train:
+	    t.train.setSpeed(int(data["speed"][0]))
+      except Exception, e:
+	print e
 	
-	if t.train:
-	
-	  t.train.setSpeed(int(data["speed"][0]))
-      
-      Handler.lock.release()
+      Handler.lock.unlock()
       
     self.wfile.write("")
     self.wfile.close()
+    #sys.stdout = orig_stdout
     
   def log_message(self, format, *args):
+    #print "log"
     return
+
+import PySideKick
+import PySideKick.Console
+
+class OutputWriter:
+    def __init__(self, textArea) :
+    	self.textArea = textArea
+
+    def write(self, text) :
+      self.textArea.appendPlainText(text)
 
 class App(QApplication):
 	def __init__(self):
@@ -384,6 +326,9 @@ class App(QApplication):
 
 		driver = a.getDriver()
 		driver.rxOn()
+		
+		a.signals.deviceAdded.connect(self.onRadioDeviceAdded)
+		a.signals.beaconEvent.connect(self.onRadioBeaconEvent)
 
 		self.radio = a
 		
@@ -418,7 +363,8 @@ class App(QApplication):
 		
 		
 		for name, iesmas in sorted(self.stendas.iesmai.items()):
-		  self.iesmai.append( IesmoMygtukas(iesmas) )
+		  if name.startswith("F"):
+		    self.iesmai.append( IesmoMygtukas(iesmas) )
 		
 		cnt = 0
 		for i in self.iesmai:
@@ -437,7 +383,34 @@ class App(QApplication):
 		self.httpserver = HttpServer(Handler)
 		
 		self.synctime = time.time()
-	      
+		
+		
+		self.debug_window = QMainWindow(parent=self.interface)
+		self.debug_window.setWindowTitle("Console")
+
+
+		console = PySideKick.Console.QPythonConsole(locals=locals())
+		self.debug_window.setCentralWidget(console)
+		self.debug_window.setGeometry(0, 0, 640, 480)
+		
+		sys.stdout = console
+
+		self.debug_window.show()
+		
+
+		
+	def onRadioBeaconEvent(self, address, bcn_name, bcn_data):
+	  if bcn_name == "Traukinys":
+	    train = self.radio.addDeviceHandler(address, Train)
+		  
+	  if bcn_name == "WirelessUART" and bcn_data == "0102030405060708":
+	    uart = self.radio.addDeviceHandler(address, WirelessUART)
+		
+	def onRadioDeviceAdded(self, device):
+	  for train in self.trains:
+	    if train.id == device.beacon_data and device.beacon_name == "Traukinys":
+	      train.assign(device)
+	  
 		
 	def on_speed_changed(self, slider):
 		print self.radio.devices
