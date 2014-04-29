@@ -18,6 +18,7 @@
 #include <xpcc/driver/connectivity/wireless/mac802.15.4/mac.hpp>
 #include <xpcc/container.hpp>
 
+using namespace xpcc;
 using namespace boost::python;
 
 class Radio : public TinyRadioProtocol<UsbRfDriver, AES_CCM_32> {
@@ -60,8 +61,12 @@ public:
 
 	}
 
-	bool sendData(uint16_t address, std::string data) {
-		return Base::send(address, (uint8_t*)data.c_str(), (uint16_t)(data.length()));
+	bool sendData(uint16_t address, std::string data, uint8_t req_id = 0,
+			uint8_t flags = (TX_ENCRYPT | TX_ACKREQ)) {
+
+		return Base::send(address, (uint8_t*) data.c_str(),
+				(uint16_t) (data.length()), req_id, FrameType::DATA, flags);
+
 	}
 
 	UsbRfDriver* getDriver() {

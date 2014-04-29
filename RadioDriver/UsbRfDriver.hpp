@@ -81,6 +81,10 @@ public:
 	RadioStatus sendFrame(bool blocking = false);
 	RadioStatus sendFrame(const Frame &frame, bool blocking = false);
 
+	RadioStatus checkTxStatus() {
+		return RadioStatus::SUCCESS;
+	}
+
 	uint8_t getFrameLength();
 
 	bool readFrame(Frame& frame);

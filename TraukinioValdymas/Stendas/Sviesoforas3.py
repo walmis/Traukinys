@@ -11,8 +11,8 @@ class Sviesoforas3(Sviesoforas4):
     GELTONA = 1
     RAUDONA = 2
   
-  def __init__(self, address, iesmas, ruozas):
-    Sviesoforas4.__init__(self, address, iesmas, ruozas)
+  def __init__(self, address, iesmas, ruozas, alias):
+    Sviesoforas4.__init__(self, address, iesmas, ruozas, alias)
     
     self._evalState()
   

@@ -40,3 +40,9 @@ class WirelessDevice(QObject):
 	  
   def associate(self):
     self.radio.associate(self.address) 
+    
+  def sendRequest(self, requestId, data, flags=int(usbradio.TxFlags.TX_ENCRYPT | usbradio.TxFlags.TX_ACKREQ)):
+    return self.radio.sendRequest(self.address, requestId, data, flags)
+  
+  def sendData(self, data, requestId = 0, flags = int(usbradio.TxFlags.TX_ENCRYPT | usbradio.TxFlags.TX_ACKREQ)):
+    return self.radio.sendData(self.address, data, requestId, flags) 

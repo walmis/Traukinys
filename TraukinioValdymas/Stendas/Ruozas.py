@@ -3,11 +3,14 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 
 class Ruozas(QObject):
-  def __init__(self, nr, speed=None, pseudo = False):
+  stateChanged = Signal() 
+  
+  def __init__(self, nr, alias, speed=None, pseudo = False):
     QObject.__init__(self)
     self._busy = False
     self._train = None
     self.pseudo = pseudo
+    self.alias = alias
     
     self.nr = nr
     self.speed = speed
@@ -18,7 +21,7 @@ class Ruozas(QObject):
     self.entered = []
     
   def __repr__(self):
-    return "<Ruozas(%s): %s <=> %s>" % (str(self.nr), self.end0, self.end1)
+    return "<Ruozas(%s): %s <=> %s>" % (self.alias if self.alias else str(self.nr), self.end0, self.end1)
     
   def addEnd(self, iesmas):
     if not self.end0:
@@ -56,7 +59,3 @@ class Ruozas(QObject):
       
       if self.speed != None:
 	train.popSpeed()
-
-      
-
-  stateChanged = Signal() 

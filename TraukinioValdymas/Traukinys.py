@@ -7,7 +7,11 @@ from PySide.QtGui import *
 import struct
 import json
 
+import PySideKick
+import PySideKick.Console
+
 from httpserver import HttpServer
+from SimpleWebSocketServer import WebSocket, SimpleWebSocketServer
 
 from WirelessDevice import WirelessDevice
 from WirelessUART import WirelessUART
@@ -137,6 +141,9 @@ class IesmoMygtukas(QToolButton):
 
 class TrainUI(QMainWindow, Ui_Traukinys):
 
+  speedChanged = Signal(int)
+  signalChanged = Signal(int)
+
   def __init__(self, id, parent=None):
 	  super(TrainUI, self).__init__(parent)
 	  self.setupUi(self)	
@@ -176,6 +183,7 @@ class TrainUI(QMainWindow, Ui_Traukinys):
   def onSpeedChanged(self):
     if self.train.speed != int(self.dGreitis.value()):
       self.dGreitis.setValue(self.train.speed)
+      self.speedChanged.emit(self.train.speed)
 	  
   def onDebugMsg(self, msg):
     self.infoText.appendPlainText(msg)
@@ -185,6 +193,7 @@ class TrainUI(QMainWindow, Ui_Traukinys):
       
   def onRssiUpdated(self):
 	  self.pSignalas.setProperty("value", -91 + self.train.rssi)
+	  self.signalChanged.emit(-91 + self.train.rssi)
 	  
   def onAssocChanged(self):
 	  if not self.train.associated:
@@ -199,8 +208,7 @@ class TrainUI(QMainWindow, Ui_Traukinys):
   def onSetSpeed(self, speed):
 	  self.train.setSpeed(speed)
 	      
-		
-		
+
 from urlparse import urlparse, parse_qs
 from BaseHTTPServer import BaseHTTPRequestHandler
 import threading
@@ -211,23 +219,6 @@ class Handler(BaseHTTPRequestHandler):
   lock = QMutex()
 
   def do_GET(self):
-    #orig_stdout = sys.stdout
-    #sys.stdout = sys.stderr
-    #if not self.client_address[0] in Handler.authorized:
-      #msgBox = QMessageBox()
-      #msgBox.setText("Client %s wants to connect, allow?" % self.client_address[0])
-      #msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-      #msgBox.setDefaultButton(QMessageBox.No)
-      #ret = msgBox.exec_()
-      #if ret == QMessageBox.Yes:
-	#Handler.authorized.append(self.client_address[0])
-      #else:
-	#self.send_response(403)
-	#self.send_header("Content-type", "text/plain")
-	#self.send_header("Connection", "close")
-	#self.end_headers()	
-	#return
-    #print "request", self.client_address[0]
     self.send_response(200)
     self.send_header("Content-type", "text/json")
     self.send_header("Connection", "close")
@@ -304,8 +295,130 @@ class Handler(BaseHTTPRequestHandler):
     #print "log"
     return
 
-import PySideKick
-import PySideKick.Console
+
+
+class SimpleEcho(WebSocket):
+
+    def handleMessage(self):
+	if self.data is None:
+	    self.data = ''
+
+	# echo message back to client
+	self.sendMessage(str(self.data))
+
+    def handleConnected(self):
+	print self.address, 'connected'
+	
+	try:
+	  data = self.getJson()
+	  
+	  self.sendMessage(data)
+	  
+	except Exception, e:
+	  print e
+
+    def handleClose(self):
+	print self.address, 'closed'
+	
+    def getJson(self):
+      app = self.server.app
+      
+      data = {}
+      data["traukiniai"] = {}
+      data["iesmai"] = {}
+      data["sviesoforai"] = {}
+      data["iesmai"] = {}
+      data["ruozai"] = {}
+      
+      c = 0
+      for tr in app.trains:
+	t = tr.train
+	  
+	if t:  
+	  data["traukiniai"][tr.id] = { "signal": -91 + t.rssi, "speed": t.currentSpeed,"active": bool(t.associated)
+	    }
+	else:
+	  data["traukiniai"][tr.id] = {"signal": -91, "speed": 0,"active": False }
+	
+	c+=1
+	
+      for name in sorted(app.stendas.iesmai.keys()):
+	if name.startswith("F"):
+	  iesmas = app.stendas.iesmai[name]
+	  data["iesmai"][name] = int(iesmas.state)     
+	  
+      for ruozas in app.stendas.ruozai:
+	nm = ruozas.alias if ruozas.alias else str(ruozas.nr)
+	if ruozas.isOccupied():
+	  data["ruozai"][nm] = ruozas.entered[0].beacon_data
+	else:
+	  data["ruozai"][nm] = -1
+	  
+      for id, sviesoforas in app.stendas.sviesoforai.iteritems():
+	data["sviesoforai"]["%02X" % id] = sviesoforas.data
+	
+      return json.dumps(data, sort_keys=True)
+      
+
+
+class WebSocketServer(SimpleWebSocketServer, QObject):
+  def __init__(self, app):
+    SimpleWebSocketServer.__init__(self, '', 8080, SimpleEcho)
+    QObject.__init__(self)
+    
+    th = threading.Thread(target=self.serveforever)
+    th.daemon = True
+    th.start()
+    
+    self.app = app
+    
+    for id, iesmas in app.stendas.iesmai.iteritems():
+      iesmas.stateChanged.connect(self.onSwitchChanged)
+      
+    for train in app.trains:
+      train.signalChanged.connect(self.onTrainChanged)
+      train.speedChanged.connect(self.onTrainChanged)
+      
+    for ruozas in app.stendas.ruozai:
+      ruozas.stateChanged.connect(self.onRoadChanged)
+    
+  def sendAll(self, data):    
+    for client in self.connections.itervalues():
+      client.sendMessage(data)
+      
+  def onRoadChanged(self):
+    ruozas = self.sender()
+    
+    nm = ruozas.alias if ruozas.alias else str(ruozas.nr)
+    data = None
+    if ruozas.isOccupied():      
+      data = {"ruozai" : { nm: ruozas.entered[0].beacon_data }}
+    else:
+      data = {"ruozai" : { nm: -1 }}
+      
+    self.sendAll(json.dumps(data))  
+    
+  def onSwitchChanged(self):
+    switch = self.sender()
+    nm = ""
+    for name, sw in self.app.stendas.iesmai.iteritems():
+      if switch == sw:
+	nm = name 
+    
+    data = {"iesmai": {nm: int(switch.state)}}
+    self.sendAll(json.dumps(data))
+
+  def onTrainChanged(self, *args):
+    train = self.sender()
+    t = train.train
+      
+    if t:  
+      data = {"traukiniai": {train.id : { "signal": -91 + t.rssi, "speed": t.currentSpeed,"active": bool(t.associated)	}}}
+    else:
+      data = {"traukiniai": {train.id : {"signal": -91, "speed": 0,"active": False }}}
+			     
+    self.sendAll(json.dumps(data))
+			     
 
 class OutputWriter:
     def __init__(self, textArea) :
@@ -379,11 +492,7 @@ class App(QApplication):
 		
 		self.polltm = self.startTimer(0)
 		
-		
-		self.httpserver = HttpServer(Handler)
-		
 		self.synctime = time.time()
-		
 		
 		self.debug_window = QMainWindow(parent=self.interface)
 		self.debug_window.setWindowTitle("Console")
@@ -397,7 +506,9 @@ class App(QApplication):
 
 		self.debug_window.show()
 		
-
+		self.httpserver = HttpServer(Handler)
+		self.websocketServer = WebSocketServer(self)
+		
 		
 	def onRadioBeaconEvent(self, address, bcn_name, bcn_data):
 	  if bcn_name == "Traukinys":

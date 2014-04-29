@@ -12,8 +12,10 @@ class Sviesoforas4(Irenginys):
     GELTONA2 = 4 #dvi geltonos sviecia, 1 laisvas, iesmas i sona
     GELTONA2_MIRKS1 = 5 #apatine geltona sviecia, virsutine mirksi, 2 laisvi, iesmas i sona
     
-  def __init__(self, address, iesmas, ruozas, evalfn=None):
+  def __init__(self, address, iesmas, ruozas, alias, evalfn=None):
     Irenginys.__init__(self, address)
+    
+    self.alias = alias
     
     self.state = Sviesoforas4.State.ZALIA
     self.blink_tm = self.startTimer(800)

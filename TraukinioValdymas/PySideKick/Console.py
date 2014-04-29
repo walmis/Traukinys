@@ -30,11 +30,12 @@ class _QPythonConsoleInterpreter(_InteractiveConsole):
         self.lock = QtCore.QMutex()
 
     def write(self,data):
-        with self.lock:
+	  self.lock.lock()
 	  if data:
 	      if data[-1] == "\n":
 		  data = data[:-1]
 	      self.ui.output.append(data)
+	  self.lock.unlock()
 
     def runsource(self,source,filename="<input>",symbol="single"):
         old_stdout = sys.stdout

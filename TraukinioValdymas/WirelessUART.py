@@ -33,8 +33,7 @@ class WirelessUART(WirelessDevice):
   def timerEvent(self, event):
    # print "timer"
     if len(self.tx_buffer) > 0:
-      #print "send_", len(self.tx_buffer)
-      self.radio.sendData(self.address, self.tx_buffer.tostring())
+      self.sendData(self.tx_buffer.tostring())
       while len(self.tx_buffer):
 	self.tx_buffer.pop(-1)
       #print len(self.tx_buffer) 

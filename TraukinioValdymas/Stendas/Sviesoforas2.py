@@ -3,12 +3,13 @@ from PySide.QtGui import *
 from Irenginys import Irenginys
 
 class Sviesoforas2(Irenginys):
-  def __init__(self, address, iesmas, road, invert = False):
+  def __init__(self, address, iesmas, road, alias, invert = False):
     Irenginys.__init__(self, address) 
     
     self.iesmas = iesmas
     self.road = road
     self.invert = invert
+    self.alias = alias
     
     self.onIesmasStateChanged()
     
