@@ -147,8 +147,8 @@ class Stendas(QObject):
     for row in c:
       address = row[0]
       type = row[1]
-      switch = row[2]
-      next_road = row[3]
+      switch = self.iesmai[row[2]]
+      next_road = self.ruozai[row[3]]
       alias = row[4]
       
       S = None
@@ -160,7 +160,7 @@ class Stendas(QObject):
 	S = Sviesoforas4
 
       if address != None:
-	self.sviesoforai[int(address)] = S(int(address), switch, next_road, alias)
+	self.sviesoforai[int(address,16)] = S(int(address,16), switch, next_road, alias)
       
     print self.sviesoforai
   

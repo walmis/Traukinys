@@ -66,7 +66,8 @@ class Iesmas(Irenginys):
 	  return self.in_ruozas
 
     else:
-      raise Exception("Iešmas %s su duotu keliu %s nesusijęs" % (self, relativeTo))
+      print u"Iešmas %s su duotu keliu %s nesusijęs" % (self, relativeTo)
+      raise Exception
 
   def update(self):
     self.setState(self._state)
